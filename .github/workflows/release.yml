@@ -32,6 +32,7 @@ jobs:
         run: npm run build:${{ matrix.os == 'windows-latest' && 'win' || 'mac' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false' # unsigned: skip keychain/timestamp probing
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
@@ -49,11 +50,18 @@ jobs:
           path: ./dist
 
       - name: Create GitHub Release
+        # Windows installers + latest-windows.yml are auto-published to the
+        # same draft release by electron-builder itself (publish: github +
+        # GH_TOKEN on a tag build). This job attaches the macOS artifacts
+        # (publish: null on the mac target), so a tag yields ONE complete
+        # draft. Re-uploading an asset with an existing name overwrites it,
+        # which keeps the list idempotent either way.
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
             dist/**/open-interview-*.dmg
+            dist/**/open-interview-*.zip
             dist/**/open-interview-*.exe
             dist/**/latest-mac.yml
             dist/**/latest-windows.yml

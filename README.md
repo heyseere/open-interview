@@ -120,4 +120,4 @@ macOS 首次截图 / 转录时会自动弹出权限请求。也可以在 **设�
 
 ## 致谢
 
-本项目起源于 [ibttf (Roy Lee)](https://github.com/ibttf) 的开源项目 [Interview Coder](https://github.com/ibttf/interview-coder)，感谢原作者的开创性工作。
+本项目起源于 [ooboqoo](https://github.com/ooboqoo) 的开源项目 [interview-coder-cn](https://github.com/ooboqoo/interview-coder-cn)，感谢原作者的开创性工作。
