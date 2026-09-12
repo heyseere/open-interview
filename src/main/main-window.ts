@@ -109,4 +109,9 @@ export function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Startup marker for the smoke test: a main-process crash during module
+  // init surfaces as a modal error dialog (no stdout output), so the packaged
+  // app must prove it reached window creation for `npm run smoke` to pass.
+  console.log('[startup] window created')
 }

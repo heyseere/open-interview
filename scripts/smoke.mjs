@@ -73,6 +73,15 @@ setTimeout(() => {
     console.error(output.trim().slice(-2000))
     process.exit(1)
   }
+  // A main-process crash during module init shows Electron's modal error
+  // dialog WITHOUT writing to stdout (the process stays alive), so "no fatal
+  // output" alone proves nothing. The app must have logged its window-created
+  // marker — otherwise it is stuck on an invisible error dialog.
+  if (!/window created/.test(output)) {
+    console.error('[smoke] app never reached window creation (stuck on a startup error dialog?):')
+    console.error(output.trim().slice(-2000))
+    process.exit(1)
+  }
   console.log(`[smoke] ok — app stayed alive for ${RUN_MS}ms with no startup errors`)
   process.exit(0)
 }, RUN_MS)
