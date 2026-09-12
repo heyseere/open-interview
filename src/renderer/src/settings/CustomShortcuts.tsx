@@ -22,11 +22,21 @@ export function CustomShortcuts() {
 
   const onShortcutChange = useCallback(
     (action: string, key: string) => {
+      // Refuse a key that is already bound to another action: Electron would
+      // silently fail to register it AND the re-register first tore down the
+      // action's old binding, leaving the action dead with no feedback
+      const conflict = Object.entries(shortcuts).find(
+        ([otherAction, shortcut]) => otherAction !== action && shortcut.key === key
+      )
+      if (conflict) {
+        toast.error(t('shortcuts.conflict'))
+        return
+      }
       const newShortcut = { ...shortcuts[action], key }
       updateShortcut(action, newShortcut)
       window.api.updateShortcuts([newShortcut])
     },
-    [shortcuts, updateShortcut]
+    [shortcuts, updateShortcut, t]
   )
 
   const handleKeyDown = useCallback(
@@ -85,6 +95,7 @@ export function CustomShortcuts() {
             description={t('shortcuts.mousePassThroughDesc')}
             shortcut="ignoreOrEnableMouse"
           />
+          <Shortcut label={t('shortcuts.toggleMiniMode')} shortcut="toggleMiniMode" />
         </div>
 
         {/* Screenshot & AI */}

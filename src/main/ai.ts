@@ -15,40 +15,50 @@ function getModel(_settings: AppSettings) {
   return _settings.model || fallbackModel
 }
 
-export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
+export interface ModelStream {
+  textStream: AsyncIterable<string>
+  /**
+   * Provider-reported stream error, if any. ai@5 swallows errors thrown from
+   * onError (its notify() ignores callback exceptions) and drops the error
+   * part out of textStream, so the consuming loop must check this after the
+   * stream ends — otherwise a mid-stream failure looks like a complete
+   * (truncated) answer.
+   */
+  getError: () => unknown
+}
+
+function createModelStream(
+  messages: ModelMessage[],
+  abortSignal?: AbortSignal,
+  extraPrompt?: string
+): ModelStream {
   const openai = createOpenAI({
     baseURL: settings.apiBaseURL,
     apiKey: settings.apiKey
   })
 
+  let streamError: unknown = null
   const { textStream } = streamText({
     model: openai.chat(getModel(settings)),
-    system: getSystemPrompt(),
+    system: getSystemPrompt(extraPrompt),
     messages,
     abortSignal,
+    // Re-throwing here is a no-op (see getError) — record instead
     onError: (err) => {
-      throw err.error ?? err
+      streamError = err.error ?? err
     }
   })
-  return textStream
+  return { textStream, getError: () => streamError }
+}
+
+export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
+  return createModelStream(messages, abortSignal)
 }
 
 export function getGeneralStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
-  const openai = createOpenAI({
-    baseURL: settings.apiBaseURL,
-    apiKey: settings.apiKey
-  })
-
-  const { textStream } = streamText({
-    model: openai.chat(getModel(settings)),
-    system: getSystemPrompt(
-      '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
-    ),
+  return createModelStream(
     messages,
     abortSignal,
-    onError: (err) => {
-      throw err.error ?? err
-    }
-  })
-  return textStream
+    '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
+  )
 }

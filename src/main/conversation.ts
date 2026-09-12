@@ -100,3 +100,23 @@ export function resetConversation(state: ConversationState): void {
   state.messages = []
   state.screenshots = []
 }
+
+/** Lengths of both collections, captured before a turn starts. */
+export interface ConversationLengths {
+  messages: number
+  screenshots: number
+}
+
+export function getLengths(state: ConversationState): ConversationLengths {
+  return { messages: state.messages.length, screenshots: state.screenshots.length }
+}
+
+/**
+ * Roll back to the captured lengths — used when a turn fails after its user
+ * message was already appended, so a failed attempt never leaves a dangling
+ * unanswered question (or a preview strip entry) in the conversation.
+ */
+export function rollbackTo(state: ConversationState, lengths: ConversationLengths): void {
+  state.messages = state.messages.slice(0, lengths.messages)
+  state.screenshots = state.screenshots.slice(0, lengths.screenshots)
+}

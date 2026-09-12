@@ -108,7 +108,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.localLanguageLabel': 'Recognition language',
   'settings.localLanguageHint': 'Spoken language for transcription; auto detects it',
   'settings.localLanguageAuto': 'Auto-detect',
-  'settings.localLanguageZh': 'Chinese',
+  'settings.localLanguageZh': 'Simplified Chinese',
   'settings.localLanguageEn': 'English',
   'settings.localVerifyAction': 'Test 3s',
   'settings.localVerifyHint': 'Record 3 seconds and show the raw transcript (never sent to the AI)',
@@ -136,8 +136,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.inputDeviceHint':
     'Uses the system default capture when empty; the button on the right reads device names (requests microphone access)',
   'settings.refreshDevicesHint': 'Read device names (requires microphone access)',
-  'settings.systemAudio': 'System audio (default)',
-  'settings.defaultMic': 'System default microphone',
+  'settings.inputDevicePlaceholder': 'Select input device',
+  'settings.systemAudio': 'System audio',
   'settings.solverSection': 'Solver Settings',
   'settings.sceneLabel': 'Scenes',
   'settings.sceneHint': 'Each scene has an editable system prompt; changes save automatically',
@@ -248,6 +248,8 @@ export const en: Record<TranslationKey, string> = {
   'shortcuts.moveLeft': 'Move window left',
   'shortcuts.moveRight': 'Move window right',
   'shortcuts.recording': 'Press a key combo or mouse middle/side button — Esc to cancel',
+  'shortcuts.conflict':
+    'This key is already assigned to another action. Change that binding first.',
   'shortcuts.resetSuccess': 'Shortcuts reset to defaults',
   'shortcuts.resetAction': 'Reset defaults',
 
@@ -290,6 +292,7 @@ export const en: Record<TranslationKey, string> = {
   'help.descFollowUp': 'Open the follow-up input',
   'help.descToggleTranscription': 'Start transcription; press again to stop and submit',
   'help.descClearTranscription': 'Clear the transcript (without submitting)',
+  'help.descToggleMiniMode': 'Switch between the standard and compact mini layout',
   'help.descPageUp': 'Page up',
   'help.descPageDown': 'Page down',
   'help.descMoveUp': 'Move the window up',
@@ -317,6 +320,9 @@ export const en: Record<TranslationKey, string> = {
   'help.faq6Q': 'Can I clear the transcript separately?',
   'help.faq6A':
     'clears the current transcript without sending it to the AI. A submitted transcript is cleared automatically as well.',
+  'help.faq7Q': 'How do I capture system audio (instead of the microphone) on macOS?',
+  'help.faq7A':
+    'Install the BlackHole virtual audio device yourself (brew install --cask blackhole-2ch, a restart is required; the app neither bundles nor installs it). In Audio MIDI Setup, create a Multi-Output Device (BlackHole + your speakers), set it as the system output, then pick "BlackHole 2ch" under Settings → Audio input device to transcribe what your Mac is playing.',
   'help.pressTo': 'Press',
   'help.visitProject': 'Visit the',
   'help.onPage': 'on'

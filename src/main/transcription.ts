@@ -57,7 +57,6 @@ export interface TranscriptionProgress {
 
 let chunkedRuntime: ChunkedRuntime | null = null
 let accumulatedText = ''
-let currentPartial = ''
 
 function sendToRenderer(channel: string, ...args: unknown[]) {
   const mainWindow = global.mainWindow
@@ -66,8 +65,8 @@ function sendToRenderer(channel: string, ...args: unknown[]) {
   }
 }
 
-function sendTranscriptionText(isPartial: boolean) {
-  sendToRenderer('transcription-text', { text: getTranscriptionText(), isPartial })
+function sendTranscriptionText() {
+  sendToRenderer('transcription-text', { text: getTranscriptionText() })
 }
 
 function reportError(message: string, fatal: boolean) {
@@ -76,14 +75,12 @@ function reportError(message: string, fatal: boolean) {
 
 function resetTranscriptionText() {
   accumulatedText = ''
-  currentPartial = ''
 }
 
 function appendFinalText(text: string) {
   if (!text) return
   accumulatedText += text
-  currentPartial = ''
-  sendTranscriptionText(false)
+  sendTranscriptionText()
 }
 
 /** Report chunked transcription progress so the renderer can show a status hint. */
@@ -233,7 +230,7 @@ function handleAudioChunk(chunk: ArrayBuffer) {
 }
 
 export function getTranscriptionText(): string {
-  return accumulatedText + currentPartial
+  return accumulatedText
 }
 
 export function clearTranscriptionText() {

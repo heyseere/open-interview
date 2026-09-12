@@ -89,11 +89,14 @@ export async function stopTranscriptionQuietly(): Promise<void> {
  */
 export async function sampleTranscription(seconds = 3): Promise<string> {
   if (useTranscriptionStore.getState().isTranscribing) {
-    stopTranscriptionQuietly()
+    // Await the teardown: main only clears its runtime once the chunk queue
+    // drains, and an immediate start would otherwise hit `alreadyRunning`
+    await stopTranscriptionQuietly()
   }
   await toggleTranscription()
   if (!useTranscriptionStore.getState().isTranscribing) {
-    throw new Error('无法启动语音识别')
+    const { language } = useSettingsStore.getState()
+    throw new Error(translate(language, 'transcriptionError.startFailed'))
   }
   try {
     await new Promise((resolve) => setTimeout(resolve, seconds * 1000))

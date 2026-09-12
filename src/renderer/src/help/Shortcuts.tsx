@@ -15,6 +15,7 @@ const CATEGORY_KEYS: Record<string, TranslationKey> = {
 const DESCRIPTION_KEYS: Record<string, TranslationKey> = {
   hideOrShowMainWindow: 'help.descHideOrShow',
   ignoreOrEnableMouse: 'help.descMousePassThrough',
+  toggleMiniMode: 'help.descToggleMiniMode',
   takeScreenshot: 'help.descTakeScreenshot',
   appendScreenshot: 'help.descAppendScreenshot',
   stopSolutionStream: 'help.descStop',

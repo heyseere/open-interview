@@ -159,10 +159,6 @@ export default function SettingsPage() {
 
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
 
-  // The "no device selected" capture differs per platform: system-audio
-  // loopback is Windows-only, macOS captures through the default microphone
-  const defaultInputLabel = isMac ? t('settings.defaultMic') : t('settings.systemAudio')
-
   const activeScene = scenes.find((s) => s.id === activeSceneId)
   const deletingScene = scenes.find((s) => s.id === sceneToDelete)
 
@@ -624,16 +620,19 @@ export default function SettingsPage() {
               </label>
               <div className="flex items-center gap-2">
                 <Select
-                  value={audioInputDeviceId || 'system'}
+                  value={audioInputDeviceId || (isMac ? undefined : 'default')}
                   onValueChange={(val) =>
-                    updateSetting('audioInputDeviceId', val === 'system' ? '' : val)
+                    updateSetting('audioInputDeviceId', val === 'default' ? '' : val)
                   }
                 >
                   <SelectTrigger className="w-52 bg-white">
-                    <SelectValue placeholder={defaultInputLabel} />
+                    <SelectValue placeholder={t('settings.inputDevicePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="system">{defaultInputLabel}</SelectItem>
+                    {/* Windows: the empty selection is system-audio loopback.
+                        macOS lists real devices only — a virtual device like
+                        BlackHole shows up here once the user installs it. */}
+                    {!isMac && <SelectItem value="default">{t('settings.systemAudio')}</SelectItem>}
                     {audioDevices
                       .filter((d) => d.kind === 'audioinput')
                       .map((d) => (

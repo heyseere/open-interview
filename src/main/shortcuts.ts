@@ -1,9 +1,16 @@
 import { globalShortcut, ipcMain, screen } from 'electron'
 import type { BrowserWindow, Rectangle } from 'electron'
 import { applyContentProtection } from './main-window'
+import { settings } from './settings'
 import { state } from './state'
+import { tMain } from './i18n'
 import { clearTranscriptionText } from './transcription'
-import { startNewScreenshotSession, appendScreenshotSession, stopCurrentStream } from './streaming'
+import {
+  startNewScreenshotSession,
+  appendScreenshotSession,
+  stopCurrentStream,
+  startNewConversation
+} from './streaming'
 
 type Shortcut = {
   action: string
@@ -35,9 +42,13 @@ let softHiddenBounds: Rectangle | null = null
  * Reassert always-on-top. `aggressive` also calls moveTop() which
  * brings the window above everything — only use on explicit user actions
  * (show, screenshot, etc.) to avoid disturbing interaction with other apps.
+ * A no-op unless privacy mode is on: with the switch off the window is a
+ * plain normal window and must never be forced back on top (the posture
+ * lives in settings.applyWindowPosture).
  */
 function applyTopMost(win: BrowserWindow, aggressive = true) {
   if (!win || win.isDestroyed()) return
+  if (!settings.privacyMode) return
   win.setAlwaysOnTop(true, 'screen-saver', FRONT_RELATIVE_LEVEL)
   if (aggressive) win.moveTop()
 }
@@ -153,8 +164,9 @@ function keepWindowInFront(window: BrowserWindow) {
     }
   }, FRONT_REASSERT_INTERVAL)
 
-  // Ensure background guard is running for persistent protection
-  startBackgroundGuard(window)
+  // Ensure background guard is running for persistent protection (stealth
+  // mode only — a normal window needs no guard)
+  if (settings.privacyMode) startBackgroundGuard(window)
 }
 
 const callbacks: Record<string, () => void> = {
@@ -277,6 +289,50 @@ const callbacks: Record<string, () => void> = {
   }
 }
 
+/**
+ * Whitelisted renderer-triggered actions (hover toolbar). Transcription is
+ * routed through the existing `toggle-transcription` event so the renderer
+ * pipeline (incl. VAD arming) stays in one place. Any other shortcut action
+ * falls through to the callbacks table so mouse-button bindings work for the
+ * whole shortcut list.
+ */
+const TRIGGERABLE_ACTIONS: Record<string, () => void | Promise<void>> = {
+  newConversation: () => startNewConversation(),
+  toggleTranscription: () => {
+    const mainWindow = global.mainWindow
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('toggle-transcription')
+    }
+  },
+  // Stop the running transcription WITHOUT submitting the accumulated text
+  cancelTranscription: () => {
+    const mainWindow = global.mainWindow
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('cancel-transcription')
+    }
+  },
+  // Stop the running transcription and submit the accumulated text right away
+  submitTranscription: () => {
+    const mainWindow = global.mainWindow
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('submit-transcription')
+    }
+  }
+}
+
+ipcMain.handle('trigger-action', async (_event, action: unknown) => {
+  const name = typeof action === 'string' ? action : ''
+  const handler = TRIGGERABLE_ACTIONS[name] ?? callbacks[name]
+  if (!handler) return { success: false, error: tMain('err.unknownAction') }
+  try {
+    await handler()
+    return { success: true }
+  } catch (error) {
+    console.error(`Action ${String(name)} failed:`, error)
+    return { success: false, error: tMain('err.actionFailed') }
+  }
+})
+
 function unregisterShortcut(action: string) {
   const shortcut = shortcuts[action]
   if (!shortcut) return
@@ -337,8 +393,6 @@ function registerShortcut(action: string, key: string) {
 function unregisterAll() {
   Object.keys(shortcuts).forEach((action) => unregisterShortcut(action))
 }
-
-ipcMain.handle('getShortcuts', () => shortcuts)
 
 ipcMain.handle(
   'initShortcuts',

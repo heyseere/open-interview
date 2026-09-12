@@ -39,7 +39,12 @@ export function takeScreenshot(): Promise<string | void> {
       thumbnailSize: { width: Math.round(width * scale), height: Math.round(height * scale) }
     })
     .then((sources) => {
-      const thumbnail = sources[0]?.thumbnail
+      // desktopCapturer's source order is not guaranteed to start with the
+      // primary display — pick the source matching it, falling back to the
+      // first source
+      const primary =
+        sources.find((source) => source.display_id === String(primaryDisplay.id)) ?? sources[0]
+      const thumbnail = primary?.thumbnail
       if (!thumbnail || thumbnail.isEmpty()) return undefined
 
       const compressed = compressToBase64(thumbnail.toPNG())

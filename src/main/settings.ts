@@ -1,4 +1,5 @@
 import { app, dialog, ipcMain } from 'electron'
+import type { BrowserWindow } from 'electron'
 import type { LocalAsrLanguage, LocalAsrModelSize } from './whisper-cpp'
 import { listOpenAIModels } from './openai-models'
 import { getSecret, setSecret, SECRET_FIELDS_LIST } from './secure-settings'
@@ -53,9 +54,38 @@ export function applyDockVisibility(hidden: boolean): void {
 }
 
 /**
- * Apply the privacy switch end to end: window capture protection plus macOS
- * dock visibility. The Windows false→true reset dance works around captures
- * that keep showing a window whose protection was re-enabled at runtime.
+ * The privacy switch also owns the window posture: ON = stealth overlay
+ * (always-on-top, visible on all workspaces and full screen, hidden from
+ * Mission Control and the Windows taskbar); OFF = a plain normal window.
+ * Called from applyPrivacyMode (startup + renderer sync) and from
+ * main-window.ts on ready-to-show.
+ */
+export function applyWindowPosture(window: BrowserWindow): void {
+  if (!window || window.isDestroyed()) return
+  const stealth = settings.privacyMode
+  if (stealth) {
+    window.setAlwaysOnTop(true, 'screen-saver', 1)
+  } else {
+    // Passing a level together with `false` leaves the window at that level
+    // on macOS — reset with the plain flag so it really demotes
+    window.setAlwaysOnTop(false)
+  }
+  window.setVisibleOnAllWorkspaces(stealth, {
+    visibleOnFullScreen: stealth,
+    skipTransformProcessType: true
+  })
+  window.setHiddenInMissionControl(stealth)
+  if (process.platform === 'win32') {
+    window.setSkipTaskbar(!stealth)
+  }
+}
+
+/**
+ * Apply the privacy switch end to end: window capture protection, the
+ * window posture (stealth overlay vs plain normal window, see
+ * applyWindowPosture) and macOS dock visibility. The Windows false→true
+ * reset dance works around captures that keep showing a window whose
+ * protection was re-enabled at runtime.
  */
 export function applyPrivacyMode(): void {
   const mainWindow = global.mainWindow
@@ -64,6 +94,7 @@ export function applyPrivacyMode(): void {
       mainWindow.setContentProtection(false)
     }
     mainWindow.setContentProtection(settings.privacyMode)
+    applyWindowPosture(mainWindow)
   }
   applyDockVisibility(settings.privacyMode)
 }

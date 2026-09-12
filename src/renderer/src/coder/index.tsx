@@ -148,6 +148,11 @@ export default function CoderPage() {
       if (useTranscriptionStore.getState().isTranscribing) {
         stopAudioCapture()
         void window.api.stopTranscription()
+        void window.api.clearTranscriptionText().catch(() => undefined)
+        // Reset the store too: the `transcription-stopped` event arrives after
+        // these listeners are gone, and a stale `isTranscribing` would make
+        // the next mic press submit the old transcript instead of recording
+        useTranscriptionStore.getState().resetState()
       }
     }
   }, [])

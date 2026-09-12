@@ -84,6 +84,10 @@ export function FAQ() {
           {t('help.faq6A')}
         </span>
       )
+    },
+    {
+      questionKey: 'help.faq7Q',
+      answer: <span>{t('help.faq7A')}</span>
     }
   ]
 

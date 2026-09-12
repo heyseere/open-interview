@@ -3,15 +3,17 @@ import type { BrowserWindow } from 'electron'
 import type { ModelMessage } from 'ai'
 import { takeScreenshot } from './take-screenshot'
 import { saveScreenshotToDisk } from './save-screenshot'
-import { getSolutionStream, getGeneralStream } from './ai'
+import { getSolutionStream, getGeneralStream, type ModelStream } from './ai'
 import { extractErrorMessage } from './errors'
 import {
   appendImage,
   appendText,
   commitTurn,
   createConversationState,
+  getLengths,
   isActive,
   resetConversation,
+  rollbackTo,
   startWithImage,
   startWithText
 } from './conversation'
@@ -79,19 +81,33 @@ function isReady(mainWindow: BrowserWindow | undefined): mainWindow is BrowserWi
   return Boolean(mainWindow && !mainWindow.isDestroyed() && state.inCoderPage && settings.apiKey)
 }
 
+/** Surface a "not configured" failure on the renderer error banner. */
+function notifyNotReady(mainWindow: BrowserWindow | undefined): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('solution-error', tMain('err.notReady'))
+  }
+}
+
+/** Outcome of one stream run. */
+interface StreamResult {
+  ok: boolean
+  /** True when the user aborted on purpose (already reported as `solution-stopped`). */
+  stoppedByUser: boolean
+}
+
 /** Coalesce tiny chunks into fewer IPC messages (~80ms batches). */
 const IPC_FLUSH_MS = 80
 
 /**
  * Run a single AI text stream to completion, managing the abort controller,
- * loading indicators and all lifecycle IPC events. Returns true when the
- * stream finished naturally (and `onComplete` was invoked).
+ * loading indicators and all lifecycle IPC events. Returns ok=false when the
+ * stream failed or was aborted (`stoppedByUser` distinguishes the latter).
  */
 async function runStream(
   mainWindow: BrowserWindow,
-  getStream: (signal: AbortSignal) => AsyncIterable<string>,
+  getStream: (signal: AbortSignal) => ModelStream,
   onComplete: (assistantResponse: string) => void
-): Promise<boolean> {
+): Promise<StreamResult> {
   const streamContext: StreamContext = {
     controller: new AbortController(),
     reason: null
@@ -113,9 +129,9 @@ async function runStream(
     sendBuffer = ''
   }
 
+  const stream = getStream(streamContext.controller.signal)
   try {
-    const solutionStream = getStream(streamContext.controller.signal)
-    for await (const chunk of solutionStream) {
+    for await (const chunk of stream.textStream) {
       if (streamContext.controller.signal.aborted) break
       assistantResponse += chunk
       sendBuffer += chunk
@@ -142,27 +158,46 @@ async function runStream(
   }
 
   if (streamContext.controller.signal.aborted) {
-    if (streamContext.reason === 'user') mainWindow.webContents.send('solution-stopped')
-    return false
+    const stoppedByUser = streamContext.reason === 'user'
+    if (stoppedByUser) mainWindow.webContents.send('solution-stopped')
+    return { ok: false, stoppedByUser }
   }
-  if (errored) return false
+
+  // ai@5 never lets provider-reported error parts escape textStream (they are
+  // recorded in onError instead), so a mid-stream failure would otherwise end
+  // here looking like a complete answer
+  if (!errored) {
+    const streamError = stream.getError()
+    if (streamError) {
+      errored = true
+      console.error('Stream reported an error:', streamError)
+      mainWindow.webContents.send(
+        'solution-error',
+        extractErrorMessage(streamError, tMain('err.unknown'))
+      )
+    }
+  }
+  if (errored) return { ok: false, stoppedByUser: false }
 
   onComplete(assistantResponse)
   mainWindow.webContents.send('solution-complete')
-  return true
+  return { ok: true, stoppedByUser: false }
 }
 
 /**
  * Run one conversation turn against the given immutable request snapshot.
  * Records the request for retry and commits the assistant response on success.
+ * A failed turn is rolled back so no dangling unanswered user message stays
+ * behind in the conversation.
  */
 async function runConversationTurn(
   mainWindow: BrowserWindow,
   requestMessages: ModelMessage[],
   mode: StreamMode
-): Promise<boolean> {
+): Promise<StreamResult> {
   lastRequest = { messages: requestMessages, mode }
-  return runStream(
+  const lengthsBefore = getLengths(conversation)
+  const result = await runStream(
     mainWindow,
     (signal) =>
       mode === 'general'
@@ -176,6 +211,10 @@ async function runConversationTurn(
       }
     }
   )
+  if (!result.ok && !result.stoppedByUser) {
+    rollbackTo(conversation, lengthsBefore)
+  }
+  return result
 }
 
 function emitTurnSeparator(mainWindow: BrowserWindow) {
@@ -209,8 +248,11 @@ export async function sendTextMessage(text: string) {
     requestMessages = appendText(conversation, question)
   }
 
-  const success = await runConversationTurn(mainWindow, requestMessages, 'solution')
-  return success ? { success: true } : { success: false, error: tMain('err.generateFailed') }
+  const result = await runConversationTurn(mainWindow, requestMessages, 'solution')
+  // A user-initiated stop already surfaced `solution-stopped` in the UI and
+  // must not come back as a failure
+  if (result.ok || result.stoppedByUser) return { success: true }
+  return { success: false, error: tMain('err.generateFailed') }
 }
 
 /** Retry the most recent request (after a failure or a manual stop). */
@@ -224,8 +266,9 @@ export async function retryLastRequest() {
   abortCurrentStream('new-request')
   if (isActive(conversation)) emitTurnSeparator(mainWindow)
 
-  const success = await runConversationTurn(mainWindow, lastRequest.messages, lastRequest.mode)
-  return success ? { success: true } : { success: false, error: tMain('err.retryFailed') }
+  const result = await runConversationTurn(mainWindow, lastRequest.messages, lastRequest.mode)
+  if (result.ok || result.stoppedByUser) return { success: true }
+  return { success: false, error: tMain('err.retryFailed') }
 }
 
 /** Drop the current conversation entirely (renderer "new session" action). */
@@ -242,7 +285,11 @@ export async function startNewConversation() {
 /** Capture a screenshot and start a brand-new conversation + stream. */
 export async function startNewScreenshotSession(): Promise<void> {
   const mainWindow = global.mainWindow
-  if (!isReady(mainWindow)) return
+  if (!isReady(mainWindow)) {
+    // Give shortcut and toolbar callers visible feedback instead of a no-op
+    notifyNotReady(mainWindow)
+    return
+  }
 
   const seq = ++requestSequence
   abortCurrentStream('new-request')
@@ -262,7 +309,10 @@ export async function startNewScreenshotSession(): Promise<void> {
 /** Capture a screenshot and append it to the existing conversation. */
 export async function appendScreenshotSession(): Promise<void> {
   const mainWindow = global.mainWindow
-  if (!isReady(mainWindow)) return
+  if (!isReady(mainWindow)) {
+    notifyNotReady(mainWindow)
+    return
+  }
 
   // Fallback to a new conversation if no conversation exists yet
   if (!isActive(conversation)) {
@@ -311,48 +361,10 @@ ipcMain.handle('list-conversations', () => listConversations())
 
 ipcMain.handle('get-conversation', (_event, id: string) => getConversation(id))
 
-ipcMain.handle('delete-conversation', (_event, id: string) => deleteConversation(id))
-
-/**
- * Whitelisted renderer-triggered actions (hover toolbar). Transcription is
- * routed through the existing `toggle-transcription` event so the renderer
- * pipeline (incl. VAD arming) stays in one place.
- */
-const TRIGGERABLE_ACTIONS: Record<string, () => void | Promise<void>> = {
-  takeScreenshot: () => startNewScreenshotSession(),
-  appendScreenshot: () => appendScreenshotSession(),
-  stopSolutionStream: () => stopCurrentStream(),
-  newConversation: () => startNewConversation(),
-  toggleTranscription: () => {
-    const mainWindow = global.mainWindow
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('toggle-transcription')
-    }
-  },
-  // Stop the running transcription WITHOUT submitting the accumulated text
-  cancelTranscription: () => {
-    const mainWindow = global.mainWindow
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('cancel-transcription')
-    }
-  },
-  // Stop the running transcription and submit the accumulated text right away
-  submitTranscription: () => {
-    const mainWindow = global.mainWindow
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('submit-transcription')
-    }
-  }
-}
-
-ipcMain.handle('trigger-action', async (_event, action: unknown) => {
-  const handler = typeof action === 'string' ? TRIGGERABLE_ACTIONS[action] : undefined
-  if (!handler) return { success: false, error: tMain('err.unknownAction') }
-  try {
-    await handler()
-    return { success: true }
-  } catch (error) {
-    console.error(`Action ${String(action)} failed:`, error)
-    return { success: false, error: tMain('err.actionFailed') }
-  }
+ipcMain.handle('delete-conversation', async (_event, id: string) => {
+  const result = await deleteConversation(id)
+  // A deleted in-progress session must not be resurrected by the next
+  // turn's upsertSession(currentSessionRecord)
+  if (currentSessionRecord?.id === id) currentSessionRecord = null
+  return result
 })

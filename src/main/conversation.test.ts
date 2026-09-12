@@ -4,9 +4,11 @@ import {
   appendText,
   commitTurn,
   createConversationState,
+  getLengths,
   isActive,
   MAX_SCREENSHOTS,
   resetConversation,
+  rollbackTo,
   startWithImage,
   startWithText
 } from './conversation'
@@ -101,6 +103,29 @@ describe('resetConversation', () => {
     const state = createConversationState()
     startWithImage(state, IMG_A)
     resetConversation(state)
+    expect(isActive(state)).toBe(false)
+    expect(state.screenshots).toEqual([])
+  })
+})
+
+describe('rollbackTo', () => {
+  it('drops a failed turn back to the pre-turn state', () => {
+    const state = createConversationState()
+    startWithImage(state, IMG_A)
+    const before = getLengths(state)
+    appendImage(state, IMG_B)
+    appendText(state, '追问')
+    rollbackTo(state, before)
+    expect(state.messages).toHaveLength(before.messages)
+    expect(state.screenshots).toEqual([IMG_A])
+    expect(isActive(state)).toBe(true)
+  })
+
+  it('rolls back a failed first turn to an empty conversation', () => {
+    const state = createConversationState()
+    const before = getLengths(state)
+    startWithText(state, '问题')
+    rollbackTo(state, before)
     expect(isActive(state)).toBe(false)
     expect(state.screenshots).toEqual([])
   })

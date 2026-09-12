@@ -42,7 +42,6 @@ const api = {
   initShortcuts: (payload: { shortcuts: Record<string, { action: string; key: string }> }) =>
     ipcRenderer.invoke('initShortcuts', payload),
   // Get shortcuts
-  getShortcuts: () => ipcRenderer.invoke('getShortcuts'),
   // Update shortcuts
   updateShortcuts: (shortcuts: { action: string; key: string }[]) =>
     ipcRenderer.invoke('updateShortcuts', shortcuts),
@@ -252,7 +251,7 @@ const api = {
   removeOpenFollowUpListener: () => {
     ipcRenderer.removeAllListeners('open-follow-up')
   },
-  onTranscriptionText: (callback: (data: { text: string; isPartial: boolean }) => void) => {
+  onTranscriptionText: (callback: (data: { text: string }) => void) => {
     ipcRenderer.on('transcription-text', (_event, data) => callback(data))
   },
   removeTranscriptionTextListener: () => {

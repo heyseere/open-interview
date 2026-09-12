@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import { ipcMain, screen, shell, BrowserWindow } from 'electron'
 import { is } from '@electron-toolkit/utils'
-import { settings } from './settings'
+import { applyWindowPosture, settings } from './settings'
 
 /**
  * Re-assert capture protection according to the privacy switch. Callers run
@@ -47,7 +47,10 @@ ipcMain.handle('set-window-size', (_event, size: { width?: unknown; height?: unk
 })
 
 export function createWindow(): void {
-  // Create the browser window.
+  // Create the browser window. The window starts as a plain normal window:
+  // the privacy switch (stealth overlay vs normal window) owns the posture
+  // and is applied by the renderer settings sync shortly after mount — the
+  // same startup rhythm as the dock visibility below.
   const mainWindow = new BrowserWindow({
     width: STANDARD_WIDTH,
     height: STANDARD_HEIGHT,
@@ -56,9 +59,6 @@ export function createWindow(): void {
     frame: false,
     transparent: true,
     hasShadow: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    hiddenInMissionControl: true,
     show: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -78,15 +78,20 @@ export function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
-    mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)
-    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+    applyWindowPosture(mainWindow)
     // Dock visibility is handled at startup (index.ts) and via renderer sync
     // (settings.ts); the window's own show event must not force it back on.
     applyContentProtection(mainWindow)
 
-    // Reclaim top position when other apps steal it
+    // Reclaim top position when other apps steal it (stealth overlay mode
+    // only — a normal window is allowed to stay buried)
     mainWindow.on('always-on-top-changed', (_event, isAlwaysOnTop) => {
-      if (!isAlwaysOnTop && mainWindow.isVisible() && !mainWindow.isDestroyed()) {
+      if (
+        settings.privacyMode &&
+        !isAlwaysOnTop &&
+        mainWindow.isVisible() &&
+        !mainWindow.isDestroyed()
+      ) {
         // Only re-set the flag; avoid moveTop() to not disturb other window focus
         mainWindow.setAlwaysOnTop(true, 'screen-saver', 1)
       }

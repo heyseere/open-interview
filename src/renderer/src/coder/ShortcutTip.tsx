@@ -13,8 +13,10 @@ import { useWindowSize } from '@/lib/utils/use-window-size'
  *
  * The listing degrades with the window size: small windows drop the window
  * group and the rarely used move-page actions first, and the smallest tier
- * keeps only the three core capture/voice rows — keeping the card clear of
- * the bottom hover toolbar.
+ * keeps only the three core capture/voice rows. The bottom padding reserves
+ * the hover toolbar's band (36px offset + 44px pill), and below ~380px of
+ * height the card is dropped entirely — the toolbar carries the same
+ * actions — so the two never overlap.
  */
 const ACTION_LABEL_KEYS: Record<string, TranslationKey> = {
   takeScreenshot: 'shortcuts.takeScreenshot',
@@ -64,18 +66,33 @@ const WINDOW_ACTIONS_REDUCED = [
 /** Smallest tier: only the core capture/voice rows, single column. */
 const AI_ACTIONS_CORE = ['takeScreenshot', 'appendScreenshot', 'toggleTranscription']
 
-/** Density tiers by window size (width × height). */
+/**
+ * Density tiers by window size (width × height). Height thresholds include
+ * the hover toolbar's bottom band (~124px total: 40px top padding + 84px
+ * bottom reserve), so each tier's centered card clears the toolbar — the
+ * full card is ~450px tall, the reduced one ~335px.
+ */
 function resolveTier(width: number, height: number): 'full' | 'reduced' | 'minimal' {
-  if (width >= 860 && height >= 560) return 'full'
-  if (width >= 700 && height >= 440) return 'reduced'
+  if (width >= 860 && height >= 600) return 'full'
+  if (width >= 700 && height >= 480) return 'reduced'
   return 'minimal'
 }
+
+/** Below this height even the minimal card cannot clear the toolbar band. */
+const MIN_TIP_HEIGHT = 380
 
 export function ShortcutTip() {
   const { t } = useI18n()
   const { shortcuts } = useShortcutsStore()
   const opacity = useSettingsStore((state) => state.opacity)
+  const toolbarEnabled = useSettingsStore((state) => state.toolbarEnabled)
+  const uiLayout = useSettingsStore((state) => state.uiLayout)
   const { width, height } = useWindowSize()
+
+  // The hover toolbar renders on the standard layout only (HoverToolbar's own
+  // gate); reserve its band so the centered card never slides under it
+  const toolbarVisible = toolbarEnabled && uiLayout !== 'compact'
+  if (height < MIN_TIP_HEIGHT) return null
 
   const tier = resolveTier(width, height)
   const aiActions = tier === 'minimal' ? AI_ACTIONS_CORE : AI_ACTIONS
@@ -107,7 +124,9 @@ export function ShortcutTip() {
     // one just-noticeable step deeper (+0.1), so the shortcut card always
     // reads as its own layer without breaking the overall transparency.
     <div
-      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center pt-10 pb-6 select-none"
+      className={`pointer-events-none absolute inset-0 z-20 flex items-center justify-center pt-10 select-none ${
+        toolbarVisible ? 'pb-[84px]' : 'pb-6'
+      }`}
       style={{ opacity: Math.min(1, opacity + 0.1) }}
     >
       <div className="bg-gray-900/80 backdrop-blur-sm rounded-xl border border-white/10 shadow-xl px-8 py-6">

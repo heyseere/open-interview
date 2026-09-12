@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { HashRouter, Routes, Route } from 'react-router'
-import { Toaster } from 'sonner'
+import { Toaster, toast } from 'sonner'
 import CoderPage from '@/coder'
 
 // Route-level code splitting: settings/help pages are loaded on demand,
@@ -60,9 +60,11 @@ export default function App() {
   }, [])
 
   // Window-local mouse side-button shortcuts: dispatch the bound action while
-  // the pointer is over the app window (the always-on-top HUD makes this the
-  // common case). OS-global hooks would need native event taps + accessibility
-  // permission — out of scope for a dependency-free Electron renderer.
+  // the pointer is over the app window (the privacy-mode overlay makes this
+  // the common case). OS-global hooks would need native event taps +
+  // accessibility permission — out of scope for a dependency-free renderer.
+  // Main falls through to the full shortcut action table, so every bindable
+  // action works; failures surface as a toast instead of a silent no-op.
   useEffect(() => {
     const bindings = new Map<string, string>()
     for (const shortcut of Object.values(shortcuts)) {
@@ -79,11 +81,15 @@ export default function App() {
       if (!action) return
       event.preventDefault()
       event.stopPropagation()
-      void window.api.triggerAction(action as Parameters<typeof window.api.triggerAction>[0])
+      void window.api
+        .triggerAction(action as Parameters<typeof window.api.triggerAction>[0])
+        .then((result) => {
+          if (!result.success && result.error) toast.error(result.error)
+        })
     }
     window.addEventListener('mousedown', handler, true)
     return () => window.removeEventListener('mousedown', handler, true)
-  }, [shortcuts])
+  }, [shortcuts, t])
 
   return (
     <>

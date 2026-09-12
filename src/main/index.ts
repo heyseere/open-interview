@@ -31,7 +31,6 @@ import './shortcuts'
 import './streaming'
 import './transcription'
 import './permissions'
-import { promptStartupMediaPermissions } from './permissions'
 import { createWindow } from './main-window'
 import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility, loadEncryptedSecrets, settings } from './settings'
@@ -79,11 +78,6 @@ app.whenReady().then(() => {
   })
 
   createWindow()
-
-  // Ask the OS for any still-undetermined mic / screen permission shortly
-  // after startup (packaged builds only) so nothing ever depends on an
-  // external terminal program for TCC prompts.
-  promptStartupMediaPermissions()
 
   // Configure auto-updater
   initAutoUpdater()

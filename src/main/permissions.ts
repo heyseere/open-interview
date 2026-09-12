@@ -56,21 +56,6 @@ export async function ensureMediaPermissions(): Promise<MediaPermissionsResult> 
 }
 
 /**
- * First-launch convenience: ask for every still-undetermined permission right
- * after startup, so TCC decisions are made inside the packaged app itself and
- * never require an external program. Dev runs are skipped on purpose — there
- * macOS attributes TCC prompts to the terminal that spawned Electron.
- */
-export function promptStartupMediaPermissions(): void {
-  if (process.platform !== 'darwin' || !app.isPackaged) return
-  setTimeout(() => {
-    void ensureMediaPermissions().catch((err) =>
-      console.error('Startup media-permission prompt failed:', err)
-    )
-  }, 1500)
-}
-
-/**
  * Read-only status snapshot for the permissions page. Never prompts —
  * `ensureMediaPermissions` owns all actual TCC prompting.
  */
