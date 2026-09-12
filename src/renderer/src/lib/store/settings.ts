@@ -175,7 +175,6 @@ export interface Settings {
   privacyMode: boolean
 
   audioInputDeviceId: string
-  audioOutputDeviceId: string
 }
 
 interface SettingsStore extends Settings {
@@ -220,8 +219,7 @@ const defaultSettings: Settings = {
 
   privacyMode: false,
 
-  audioInputDeviceId: '',
-  audioOutputDeviceId: ''
+  audioInputDeviceId: ''
 }
 
 /**

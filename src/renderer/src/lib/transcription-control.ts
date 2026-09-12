@@ -4,6 +4,7 @@ import { translate } from '@/lib/i18n'
 import { useSettingsStore } from '@/lib/store/settings'
 import { useSolutionStore } from '@/lib/store/solution'
 import { useTranscriptionStore } from '@/lib/store/transcription'
+import { isMac } from '@/lib/utils/env'
 
 let transitionLock = false
 
@@ -126,21 +127,27 @@ export async function toggleTranscription(): Promise<void> {
 
     // Ask the OS for mic / screen-recording access on the app's own behalf
     // (macOS TCC prompts, see main/permissions.ts) so no terminal workaround
-    // is ever needed. Only bail out when every capture path is blocked; in
-    // that case jump straight to the matching System Settings pane, because a
-    // denied TCC decision can never re-prompt by itself.
+    // is ever needed. Only bail out when the permission the actual capture
+    // path needs is denied; in that case jump straight to the matching System
+    // Settings pane, because a denied TCC decision can never re-prompt by
+    // itself.
     try {
       const permissions = await window.api.ensureMediaPermissions()
-      // Only an explicit denial blocks: 'unknown' means the app could not own
-      // the prompt (dev build) and 'not-determined' still lets the OS decide
-      // during capture. A denied TCC decision can never re-prompt by itself,
-      // so that is the one case worth sending the user to System Settings.
-      if (permissions.microphone === 'denied' && permissions.screen === 'denied') {
-        const pane =
-          settings.audioInputDeviceId && permissions.microphone === 'denied'
-            ? 'microphone'
-            : 'screen'
-        void window.api.openPrivacySettings(pane).catch(() => undefined)
+      // macOS always captures through a microphone (no system-audio loopback
+      // there); on Windows the default path is system-audio loopback unless a
+      // specific microphone is selected. Only an explicit denial blocks:
+      // 'unknown' means the app could not own the prompt (dev build) and
+      // 'not-determined' still lets the OS decide during capture.
+      const needsMicrophone = isMac || Boolean(settings.audioInputDeviceId)
+      const denied: 'microphone' | 'screen' | null = needsMicrophone
+        ? permissions.microphone === 'denied'
+          ? 'microphone'
+          : null
+        : permissions.screen === 'denied'
+          ? 'screen'
+          : null
+      if (denied) {
+        void window.api.openPrivacySettings(denied).catch(() => undefined)
         setErrorMessage(translate(settings.language, 'transcriptionError.mediaPermissionDenied'))
         return
       }

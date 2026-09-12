@@ -15,14 +15,6 @@ import {
   CommandList
 } from '@/components/ui/command'
 
-const defaultModels = [
-  { value: 'Qwen/Qwen3-VL-32B-Instruct', label: 'Qwen/Qwen3-VL-32B-Instruct' },
-  { value: 'Qwen/Qwen3-VL-8B-Thinking', label: 'Qwen/Qwen3-VL-8B-Thinking' },
-  { value: 'zai-org/GLM-4.5V', label: 'zai-org/GLM-4.5V' },
-  { value: 'gpt-5-mini', label: 'gpt-5-mini' },
-  { value: 'gpt-5.5', label: 'gpt-5.5' }
-]
-
 export function SelectModel({
   value,
   onChange,
@@ -48,11 +40,7 @@ export function SelectModel({
   // the one the model list was fetched from.
   const modelsStale = Boolean(fetchBaseURL) && modelsBaseURL !== fetchBaseURL
 
-  const models = useMemo(() => {
-    const customItems = customModels.map((m) => ({ value: m, label: m, isCustom: true }))
-    const defaultItems = defaultModels.map((m) => ({ ...m, isCustom: false }))
-    return [...customItems, ...defaultItems]
-  }, [customModels])
+  const models = useMemo(() => customModels.map((m) => ({ value: m, label: m })), [customModels])
 
   const fetchModels = useCallback(
     async (auto = false): Promise<boolean> => {
@@ -170,16 +158,14 @@ export function SelectModel({
                       className={cn('ml-auto', value === m.value ? 'opacity-100' : 'opacity-0')}
                     />
                   </CommandItem>
-                  {m.isCustom && (
-                    <div className="hidden group-hover:flex">
-                      <button
-                        className="text-gray-400 hover:text-red-500 cursor-pointer"
-                        onClick={() => deleteCustomModel(m.value)}
-                      >
-                        <X className="h-6 w-6" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="hidden group-hover:flex">
+                    <button
+                      className="text-gray-400 hover:text-red-500 cursor-pointer"
+                      onClick={() => deleteCustomModel(m.value)}
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
                 </div>
               ))}
               {showCreate && (

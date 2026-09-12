@@ -97,8 +97,7 @@ export const settings = {
    * screenshots never written to disk or previewed.
    */
   privacyMode: false,
-  audioInputDeviceId: '',
-  audioOutputDeviceId: ''
+  audioInputDeviceId: ''
 }
 
 export type AppSettings = typeof settings

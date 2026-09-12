@@ -4,11 +4,7 @@ import { canOwnTccPrompt } from './permissions-policy'
 export type MediaPermissionName = 'microphone' | 'screen'
 
 export type MediaPermissionStatus =
-  | 'granted'
-  | 'denied'
-  | 'not-determined'
-  | 'restricted'
-  | 'unknown'
+  'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown'
 
 export interface MediaPermissionsResult {
   microphone: MediaPermissionStatus

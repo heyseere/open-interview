@@ -35,6 +35,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { isMac } from '@/lib/utils/env'
 import {
   useSettingsStore,
   PRESET_SCENE_PROMPTS,
@@ -133,7 +134,6 @@ export default function SettingsPage() {
     toolbarEnabled,
     toolbarDwellMs,
     audioInputDeviceId,
-    audioOutputDeviceId,
     privacyMode,
     updateSetting,
     setActiveScene,
@@ -158,6 +158,10 @@ export default function SettingsPage() {
   const [verifyResult, setVerifyResult] = useState<string | null>(null)
 
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+
+  // The "no device selected" capture differs per platform: system-audio
+  // loopback is Windows-only, macOS captures through the default microphone
+  const defaultInputLabel = isMac ? t('settings.defaultMic') : t('settings.systemAudio')
 
   const activeScene = scenes.find((s) => s.id === activeSceneId)
   const deletingScene = scenes.find((s) => s.id === sceneToDelete)
@@ -626,10 +630,10 @@ export default function SettingsPage() {
                   }
                 >
                   <SelectTrigger className="w-52 bg-white">
-                    <SelectValue placeholder={t('settings.systemAudio')} />
+                    <SelectValue placeholder={defaultInputLabel} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="system">{t('settings.systemAudio')}</SelectItem>
+                    <SelectItem value="system">{defaultInputLabel}</SelectItem>
                     {audioDevices
                       .filter((d) => d.kind === 'audioinput')
                       .map((d) => (
@@ -649,33 +653,6 @@ export default function SettingsPage() {
                   <RefreshCw className="h-3.5 w-3.5" />
                 </Button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">
-                {t('settings.outputDeviceLabel')}
-                <span className="ml-2 text-xs font-light">{t('settings.outputDeviceHint')}</span>
-              </label>
-              <Select
-                value={audioOutputDeviceId || 'default'}
-                onValueChange={(val) =>
-                  updateSetting('audioOutputDeviceId', val === 'default' ? '' : val)
-                }
-              >
-                <SelectTrigger className="w-60 bg-white">
-                  <SelectValue placeholder={t('settings.defaultDevice')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="default">{t('settings.defaultDevice')}</SelectItem>
-                  {audioDevices
-                    .filter((d) => d.kind === 'audiooutput')
-                    .map((d) => (
-                      <SelectItem key={d.deviceId} value={d.deviceId}>
-                        {d.label || d.deviceId}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
