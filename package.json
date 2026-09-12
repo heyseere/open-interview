@@ -31,7 +31,7 @@
   },
   "homepage": "https://github.com/heyseere/open-interview#readme",
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.16",
+    "@ai-sdk/openai": "^4.0.63",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "ai": "^5.0.18",
