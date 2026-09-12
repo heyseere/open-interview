@@ -70,9 +70,13 @@ export function applyWindowPosture(window: BrowserWindow): void {
     // on macOS — reset with the plain flag so it really demotes
     window.setAlwaysOnTop(false)
   }
+  // Never pass skipTransformProcessType here: on macOS ≥10.14 a window can
+  // only float above fullscreen spaces when its app is an accessory
+  // (UIElement) app, and Electron v37 performs exactly that transform
+  // internally (DockHide/DockShow) when the option is omitted. Skipping it
+  // leaves the app Regular and the window vanishes behind fullscreen apps.
   window.setVisibleOnAllWorkspaces(stealth, {
-    visibleOnFullScreen: stealth,
-    skipTransformProcessType: true
+    visibleOnFullScreen: stealth
   })
   window.setHiddenInMissionControl(stealth)
   if (process.platform === 'win32') {
