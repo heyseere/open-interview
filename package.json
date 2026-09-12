@@ -34,7 +34,7 @@
     "@ai-sdk/openai": "^2.0.16",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
-    "ai": "^5.0.18",
+    "ai": "^7.0.95",
     "dotenv": "^17.4.2",
     "electron-updater": "^6.8.9",
     "zod": "^4.6.2"
