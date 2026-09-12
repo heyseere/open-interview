@@ -1,0 +1,44 @@
+appId: com.heyseere.open-interview
+productName: Open Interview
+compression: maximum # 发行包最大压缩（安装包更小，仅增加构建时间）
+directories:
+  buildResources: build
+files:
+  - '!**/.vscode/*'
+  - '!src/*'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
+  - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
+  - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!**/*.{md,map}'
+  - '!**/*.d.ts'
+  - '!**/{test,__tests__,tests,example,examples,docs}/**'
+  - '!**/{.github,.idea,*.tsbuildinfo}'
+win:
+  executableName: OpenInterview
+nsis:
+  artifactName: ${name}-${version}-setup.${ext}
+  shortcutName: ${productName}
+  uninstallDisplayName: ${productName}
+  createDesktopShortcut: always
+mac:
+  artifactName: ${name}-${version}-${arch}-mac.${ext}
+  entitlementsInherit: build/entitlements.mac.plist
+  electronLanguages:
+    - zh-CN
+    - en
+  publish: null # 关闭 macOS 自动更新功能
+  extendInfo:
+    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+  notarize: false
+dmg:
+  artifactName: ${name}-${version}.${ext}
+npmRebuild: false
+publish:
+  provider: github
+  owner: heyseere
+  repo: open-interview
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

@@ -1,0 +1,14 @@
+node_modules
+out
+dist
+.DS_Store
+.eslintcache
+*.log*
+.env*
+.serena/
+
+# AI assistant working files (kept local, not part of the repository)
+AGENTS.md
+CLAUDE.md
+.claude/
+.agents/
