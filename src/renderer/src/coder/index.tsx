@@ -17,7 +17,6 @@ import { useShortcutsStore } from '@/lib/store/shortcuts'
 import { AppHeader } from './AppHeader'
 import { AppContent } from './AppContent'
 import { AppStatusBar } from './AppStatusBar'
-import { PrerequisitesChecker } from './PrerequisitesChecker'
 import { TranscriptionBar } from './TranscriptionBar'
 import { CompactPage } from './CompactPage'
 import { HoverToolbar } from './HoverToolbar'
@@ -162,7 +161,6 @@ export default function CoderPage() {
       <div className="relative h-screen" style={{ opacity }}>
         <CompactPage />
         {followUpDialog}
-        <PrerequisitesChecker />
       </div>
     )
   }
@@ -182,7 +180,6 @@ export default function CoderPage() {
           stays distinguishable without ignoring the transparency preference */}
       {!screenshotData && <ShortcutTip />}
       {followUpDialog}
-      <PrerequisitesChecker />
     </div>
   )
 }

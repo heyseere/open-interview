@@ -321,18 +321,7 @@ export const en: Record<TranslationKey, string> = {
     'clears the current transcript without sending it to the AI. A submitted transcript is cleared automatically as well.',
   'help.pressTo': 'Press',
   'help.visitProject': 'Visit the',
-  'help.onPage': 'on',
-
-  // Prerequisites checker (first-run)
-  'welcome.title': 'Welcome to Open Interview',
-  'welcome.introPrefix': 'Configure an AI gateway first, e.g.',
-  'welcome.siliconflowName': 'SiliconFlow',
-  'welcome.introMiddle': '(China) or',
-  'welcome.introSuffix': '.',
-  'welcome.baseUrlHint': '(the API Base URL of SiliconFlow or another provider)',
-  'welcome.apiKeyPlaceholder': 'Enter API Key',
-  'welcome.start': 'Get started',
-  'welcome.moreSettings': 'More settings'
+  'help.onPage': 'on'
 }
 
 export type { TranslationKey, TranslationParams }

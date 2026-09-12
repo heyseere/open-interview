@@ -309,18 +309,7 @@ export const zhCN = {
   'help.faq6A': '即可清除当前转录文本，清除后的文本不会提交给 AI。转录发送成功后也会自动清除。',
   'help.pressTo': '按下',
   'help.visitProject': '您可以访问本项目',
-  'help.onPage': '在',
-
-  // Prerequisites checker (first-run)
-  'welcome.title': '欢迎使用 Open Interview',
-  'welcome.introPrefix': '请先配置大模型聚合平台信息，如国内的',
-  'welcome.siliconflowName': '硅基流动',
-  'welcome.introMiddle': '或国外的',
-  'welcome.introSuffix': '等 。',
-  'welcome.baseUrlHint': '(配置硅基流动或其他代理服务商的 API Base URL 地址)',
-  'welcome.apiKeyPlaceholder': '请输入 API Key',
-  'welcome.start': '开始使用',
-  'welcome.moreSettings': '更多设置'
+  'help.onPage': '在'
 } as const
 
 export type TranslationKey = keyof typeof zhCN
