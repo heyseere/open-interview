@@ -1,10 +1,15 @@
-import { startAudioCapture, stopAudioCapture, disableVAD, enableVAD } from '@/lib/audio-capture'
+import {
+  startAudioCapture,
+  stopAudioCapture,
+  disableVAD,
+  enableVAD,
+  getLastCaptureMaxRms
+} from '@/lib/audio-capture'
 import { resolveTranscriptionOptions } from '@/lib/asr-config'
 import { translate } from '@/lib/i18n'
 import { useSettingsStore } from '@/lib/store/settings'
 import { useSolutionStore } from '@/lib/store/solution'
 import { useTranscriptionStore } from '@/lib/store/transcription'
-import { isMac } from '@/lib/utils/env'
 
 let transitionLock = false
 
@@ -88,6 +93,7 @@ export async function stopTranscriptionQuietly(): Promise<void> {
  * ASR setup end to end ("试录 3 秒").
  */
 export async function sampleTranscription(seconds = 3): Promise<string> {
+  const { language } = useSettingsStore.getState()
   if (useTranscriptionStore.getState().isTranscribing) {
     // Await the teardown: main only clears its runtime once the chunk queue
     // drains, and an immediate start would otherwise hit `alreadyRunning`
@@ -95,18 +101,29 @@ export async function sampleTranscription(seconds = 3): Promise<string> {
   }
   await toggleTranscription()
   if (!useTranscriptionStore.getState().isTranscribing) {
-    const { language } = useSettingsStore.getState()
     throw new Error(translate(language, 'transcriptionError.startFailed'))
   }
   try {
     await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
-    const text = await window.api.getTranscriptionText()
-    return text.trim()
+    // Stop BEFORE reading the text: a sub-chunkSeconds sample only gets
+    // transcribed when the stop drains the pending tail, so reading first
+    // would always return empty for the default 3s < chunkSeconds
+    await stopTranscriptionQuietly()
+    const text = (await window.api.getTranscriptionText()).trim()
+    if (!text && getLastCaptureMaxRms() < NO_AUDIO_RMS) {
+      // Nothing recognisable AND the input device delivered essentially no
+      // audio — point the user at the capture source, not the recognizer
+      throw new Error(translate(language, 'settings.localVerifySilent'))
+    }
+    return text
   } finally {
     stopTranscriptionQuietly()
     await window.api.clearTranscriptionText().catch(() => undefined)
   }
 }
+
+/** Below this peak RMS a capture session is considered to have gotten no audio. */
+const NO_AUDIO_RMS = 0.003
 
 /**
  * Toggle real-time speech transcription. Shared by the global shortcut, the
@@ -136,12 +153,13 @@ export async function toggleTranscription(): Promise<void> {
     // itself.
     try {
       const permissions = await window.api.ensureMediaPermissions()
-      // macOS always captures through a microphone (no system-audio loopback
-      // there); on Windows the default path is system-audio loopback unless a
-      // specific microphone is selected. Only an explicit denial blocks:
-      // 'unknown' means the app could not own the prompt (dev build) and
-      // 'not-determined' still lets the OS decide during capture.
-      const needsMicrophone = isMac || Boolean(settings.audioInputDeviceId)
+      // A specific microphone is selected → capture runs through the mic;
+      // otherwise the default path is system-audio loopback on BOTH platforms
+      // (macOS uses Chromium's native loopback via feature flags). Only an
+      // explicit denial blocks: 'unknown' means the app could not own the
+      // prompt (dev build) and 'not-determined' still lets the OS decide
+      // during capture.
+      const needsMicrophone = Boolean(settings.audioInputDeviceId)
       const denied: 'microphone' | 'screen' | null = needsMicrophone
         ? permissions.microphone === 'denied'
           ? 'microphone'

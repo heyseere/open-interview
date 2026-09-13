@@ -8,6 +8,9 @@ let processor: ScriptProcessorNode | null = null
 let workletNode: AudioWorkletNode | null = null
 let workletUrl: string | null = null
 
+/** Peak input level of the most recent capture session (for silence diagnostics). */
+let captureMaxRms = 0
+
 /** Active silence detector for auto-submitting transcriptions (VAD). */
 let silenceDetector: SilenceDetector | null = null
 let onSilenceTrigger: (() => void) | null = null
@@ -21,8 +24,22 @@ const PCM_CAPTURE_WORKLET_SOURCE = `
 class PcmCaptureProcessor extends AudioWorkletProcessor {
   process(inputs) {
     const input = inputs[0]
-    if (input && input[0] && input[0].length > 0) {
-      this.port.postMessage(input[0].slice(0))
+    if (input && input.length > 0 && input[0] && input[0].length > 0) {
+      let frame
+      if (input.length === 1) {
+        frame = input[0].slice(0)
+      } else {
+        // Downmix stereo input to mono (loopback capture is stereo): only
+        // the first channel was tapped before, losing right-channel speech
+        frame = new Float32Array(input[0].length)
+        for (let ch = 0; ch < input.length; ch++) {
+          const data = input[ch]
+          if (!data) continue
+          for (let i = 0; i < frame.length; i++) frame[i] += data[i]
+        }
+        for (let i = 0; i < frame.length; i++) frame[i] /= input.length
+      }
+      this.port.postMessage(frame)
     }
     return true
   }
@@ -47,8 +64,10 @@ export function disableVAD(): void {
 }
 
 function downsampleAndSend(float32: Float32Array): void {
+  const rms = computeRms(float32)
+  if (rms > captureMaxRms) captureMaxRms = rms
   if (silenceDetector && onSilenceTrigger) {
-    if (silenceDetector.process(computeRms(float32), performance.now())) {
+    if (silenceDetector.process(rms, performance.now())) {
       const callback = onSilenceTrigger
       // Detach first so a burst of frames cannot fire twice
       disableVAD()
@@ -65,29 +84,55 @@ function downsampleAndSend(float32: Float32Array): void {
   window.api.sendTranscriptionAudioChunk(int16.buffer)
 }
 
+/**
+ * Raw-capture constraints: all browser audio processing is disabled. This is
+ * required for system-audio loopback capture (the default input on both
+ * platforms): its input signal IS the system render mix, so Chromium's
+ * default echo cancellation treats it as the far-end echo and cancels it away
+ * — the result is near-silence and garbage transcripts. Noise suppression and
+ * AGC likewise mangle music/system sounds. Plain microphones transcribe
+ * better on faithful raw audio too.
+ */
+const RAW_AUDIO_CONSTRAINTS: MediaTrackConstraints = {
+  echoCancellation: false,
+  noiseSuppression: false,
+  autoGainControl: false
+}
+
 async function openMicrophoneStream(deviceId: string): Promise<MediaStream> {
   return navigator.mediaDevices.getUserMedia({
-    audio: { deviceId: { exact: deviceId } },
+    audio: { deviceId: { exact: deviceId }, ...RAW_AUDIO_CONSTRAINTS },
     video: false
   })
 }
 
 async function openDefaultMicrophoneStream(): Promise<MediaStream> {
-  return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  return navigator.mediaDevices.getUserMedia({ audio: RAW_AUDIO_CONSTRAINTS, video: false })
 }
 
 /**
- * System-audio loopback via getDisplayMedia. Electron's
- * setDisplayMediaRequestHandler only supports loopback audio on Windows, so
- * this path must never be taken on macOS — there the request is rejected and
- * transcription can never start.
+ * System-audio loopback via getDisplayMedia. With the Chromium feature flags
+ * enabled in the main process (`MacLoopbackAudioForScreenShare` +
+ * `MacSckSystemAudioLoopbackOverride`, see main/index.ts) this captures the
+ * system output mix natively on macOS 13.2+ too — the loopback `audio:
+ * 'loopback'` handler response is no longer Windows-only.
  */
 async function openSystemAudioStream(): Promise<MediaStream> {
   const stream = await navigator.mediaDevices.getDisplayMedia({
     audio: true,
     video: true
   })
-  stream.getVideoTracks().forEach((t) => t.stop())
+  if (stream.getAudioTracks().length === 0) {
+    stream.getTracks().forEach((t) => t.stop())
+    throw new Error('system-audio loopback returned no audio track')
+  }
+  // The video track only exists because getDisplayMedia requires requesting
+  // it; stop and detach it so the capture graph is audio-only (per the
+  // electron-audio-loopback reference implementation)
+  stream.getVideoTracks().forEach((t) => {
+    t.stop()
+    stream.removeTrack(t)
+  })
   return stream
 }
 
@@ -130,7 +175,20 @@ async function connectCaptureTap(
   // Legacy fallback: runs on the renderer main thread
   processor = context.createScriptProcessor(2048, 1, 1)
   processor.onaudioprocess = (e) => {
-    downsampleAndSend(e.inputBuffer.getChannelData(0))
+    const buffer = e.inputBuffer
+    let frame = buffer.getChannelData(0)
+    if (buffer.numberOfChannels > 1) {
+      // Same stereo downmix as the worklet path
+      const mixed = new Float32Array(frame.length)
+      for (let i = 0; i < frame.length; i++) mixed[i] = frame[i]
+      for (let ch = 1; ch < buffer.numberOfChannels; ch++) {
+        const data = buffer.getChannelData(ch)
+        for (let i = 0; i < mixed.length; i++) mixed[i] += data[i]
+      }
+      for (let i = 0; i < mixed.length; i++) mixed[i] /= buffer.numberOfChannels
+      frame = mixed
+    }
+    downsampleAndSend(frame)
   }
   source.connect(processor)
   processor.connect(monitorGain)
@@ -138,6 +196,7 @@ async function connectCaptureTap(
 
 export async function startAudioCapture(): Promise<void> {
   const { audioInputDeviceId } = useSettingsStore.getState()
+  captureMaxRms = 0
 
   let stream: MediaStream
   if (audioInputDeviceId) {
@@ -147,20 +206,36 @@ export async function startAudioCapture(): Promise<void> {
       console.warn('Failed to open selected microphone, falling back:', err)
       stream = isMac ? await openDefaultMicrophoneStream() : await openSystemAudioStream()
     }
-  } else if (isMac) {
-    // macOS has no system-audio loopback: the default capture device is the
-    // system default microphone
-    stream = await openDefaultMicrophoneStream()
   } else {
+    // No device selected: capture system-audio loopback (the platform
+    // default on both macOS and Windows)
     stream = await openSystemAudioStream()
   }
 
   mediaStream = stream
 
   audioContext = new AudioContext({ sampleRate: 16000 })
+  console.info(
+    '[asr] capture opened:',
+    JSON.stringify({
+      tracks: stream.getAudioTracks().map((t) => t.label),
+      ctxRate: audioContext.sampleRate,
+      ctxState: audioContext.state
+    })
+  )
 
   const source = audioContext.createMediaStreamSource(new MediaStream(stream.getAudioTracks()))
   await connectCaptureTap(audioContext, source)
+}
+
+/**
+ * Peak RMS of the most recent capture session. Silence-guard helper: values
+ * below ~0.003 mean the input device delivered essentially no audio at all
+ * (wrong device selected, or a loopback session that came up before any
+ * system audio was playing).
+ */
+export function getLastCaptureMaxRms(): number {
+  return captureMaxRms
 }
 
 export function stopAudioCapture(): void {

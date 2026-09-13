@@ -35,7 +35,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { isMac } from '@/lib/utils/env'
 import {
   useSettingsStore,
   PRESET_SCENE_PROMPTS,
@@ -59,6 +58,13 @@ import { sampleTranscription } from '@/lib/transcription-control'
 
 /** Shape returned by the local ASR status IPC (kept in sync with main). */
 type LocalAsrStatus = Awaited<ReturnType<typeof window.api.localAsrStatus>>
+
+/**
+ * Select value for the 系统音频 entry (stored as ''). Must never collide with
+ * a real Chromium deviceId — Chromium itself uses the literal 'default' (and
+ * Windows 'communications') for pseudo-devices, so use a reserved prefix.
+ */
+const SYSTEM_AUDIO_VALUE = '__system-audio__'
 
 /** Stage → i18n key for the setup progress label. */
 const LOCAL_SETUP_STAGE_KEYS: Record<string, TranslationKey> = {
@@ -620,21 +626,27 @@ export default function SettingsPage() {
               </label>
               <div className="flex items-center gap-2">
                 <Select
-                  value={audioInputDeviceId || (isMac ? undefined : 'default')}
+                  value={audioInputDeviceId || SYSTEM_AUDIO_VALUE}
                   onValueChange={(val) =>
-                    updateSetting('audioInputDeviceId', val === 'default' ? '' : val)
+                    updateSetting('audioInputDeviceId', val === SYSTEM_AUDIO_VALUE ? '' : val)
                   }
                 >
                   <SelectTrigger className="w-52 bg-white">
                     <SelectValue placeholder={t('settings.inputDevicePlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Windows: the empty selection is system-audio loopback.
-                        macOS lists real devices only — a virtual device like
-                        BlackHole shows up here once the user installs it. */}
-                    {!isMac && <SelectItem value="default">{t('settings.systemAudio')}</SelectItem>}
+                    {/* The empty stored value is system-audio loopback on BOTH
+                        platforms (macOS uses Chromium's native loopback via
+                        main-process feature flags). The sentinel must not
+                        collide with Chromium's literal 'default' deviceId. */}
+                    <SelectItem value={SYSTEM_AUDIO_VALUE}>{t('settings.systemAudio')}</SelectItem>
                     {audioDevices
-                      .filter((d) => d.kind === 'audioinput')
+                      .filter(
+                        (d) =>
+                          d.kind === 'audioinput' &&
+                          d.deviceId !== 'default' &&
+                          d.deviceId !== 'communications'
+                      )
                       .map((d) => (
                         <SelectItem key={d.deviceId} value={d.deviceId}>
                           {d.label || d.deviceId}

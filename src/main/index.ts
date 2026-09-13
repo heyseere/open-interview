@@ -36,6 +36,16 @@ import { initAutoUpdater } from './auto-updater'
 import { applyDockVisibility, loadEncryptedSecrets, settings } from './settings'
 import { disposeWhisperCpp } from './whisper-cpp'
 
+// Enable Chromium's native system-audio loopback for getDisplayMedia on macOS
+// (ScreenCaptureKit path). Without these hidden flags Electron only supports
+// `audio: 'loopback'` on Windows; with them the same no-driver loopback the
+// Windows path uses works on macOS 13.2+. Must be appended before the app is
+// ready. Unknown features are ignored on other platforms.
+app.commandLine.appendSwitch(
+  'enable-features',
+  'MacLoopbackAudioForScreenShare,MacSckSystemAudioLoopbackOverride'
+)
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.

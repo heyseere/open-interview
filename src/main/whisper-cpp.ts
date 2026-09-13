@@ -19,6 +19,7 @@ import { pipeline } from 'node:stream/promises'
 import { app } from 'electron'
 import { pcm16MonoToWav } from './audio-wav'
 import { tMain } from './i18n'
+import { toSimplifiedChinese } from './t2s'
 
 /**
  * Local ASR through the whisper.cpp CLI (`whisper-cli` + ggml models).
@@ -164,7 +165,8 @@ const activeChildren = new Set<ChildProcess>()
 /**
  * Transcribe one 16kHz mono PCM chunk; resolves with plain text.
  * One whisper-cli process per chunk: stdout with `-nt -np` is exactly the
- * recognized text.
+ * recognized text. Output is normalized to Simplified Chinese afterwards
+ * (see t2s.ts) because zh models mix Traditional characters into their output.
  */
 export async function transcribeWithWhisperCpp(
   modelSize: LocalAsrModelSize,
@@ -184,13 +186,16 @@ export async function transcribeWithWhisperCpp(
   const wavPath = join(tmpdir(), `icn-wcpp-${Date.now()}-${randomUUID()}.wav`)
   await writeFile(wavPath, pcm16MonoToWav(pcm))
 
+  const args = ['-m', modelPath, '-f', wavPath, '-l', language, '-nt', '-np']
+  if (language === 'zh') {
+    // Initial prompt that biases decoding toward Mandarin with Simplified
+    // script and mainland phrasing (well-established whisper.cpp trick)
+    args.push('--prompt', '以下是普通话的句子。')
+  }
+
   try {
     return await new Promise<string>((resolve, reject) => {
-      const child = spawn(
-        cli.path,
-        ['-m', modelPath, '-f', wavPath, '-l', language, '-nt', '-np'],
-        { stdio: ['ignore', 'pipe', 'pipe'] }
-      )
+      const child = spawn(cli.path, args, { stdio: ['ignore', 'pipe', 'pipe'] })
       activeChildren.add(child)
 
       let stdout = ''
@@ -215,7 +220,7 @@ export async function transcribeWithWhisperCpp(
       child.on('exit', (code) => {
         clearTimeout(timer)
         if (code === 0) {
-          resolve(stdout.trim())
+          resolve(toSimplifiedChinese(stdout.trim()))
         } else {
           const tail = stderr.trim().split('\n').slice(-3).join('\n')
           reject(

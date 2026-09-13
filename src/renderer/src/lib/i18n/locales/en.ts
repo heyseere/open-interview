@@ -114,6 +114,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.localVerifyHint': 'Record 3 seconds and show the raw transcript (never sent to the AI)',
   'settings.localVerifyResult': 'Result',
   'settings.localVerifyNoSpeech': 'No speech detected — check the input device and try again',
+  'settings.localVerifySilent':
+    'No audio was captured during the sample: make sure something is playing, or switch to another input device and retry',
   'settings.localVerifyDone': 'Local recognition verified',
 
   // Settings page
@@ -134,7 +136,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.vadSilenceHint': 'Auto-submit after silence lasts this long',
   'settings.inputDeviceLabel': 'Audio input device',
   'settings.inputDeviceHint':
-    'Uses the system default capture when empty; the button on the right reads device names (requests microphone access)',
+    'System audio (the default) captures what your computer is playing; pick a microphone to capture a specific device (the button on the right reads device names, requesting microphone access)',
   'settings.refreshDevicesHint': 'Read device names (requires microphone access)',
   'settings.inputDevicePlaceholder': 'Select input device',
   'settings.systemAudio': 'System audio',
@@ -320,9 +322,9 @@ export const en: Record<TranslationKey, string> = {
   'help.faq6Q': 'Can I clear the transcript separately?',
   'help.faq6A':
     'clears the current transcript without sending it to the AI. A submitted transcript is cleared automatically as well.',
-  'help.faq7Q': 'How do I capture system audio (instead of the microphone) on macOS?',
+  'help.faq7Q': 'How do I transcribe the audio my computer is playing (instead of the microphone)?',
   'help.faq7A':
-    'Install the BlackHole virtual audio device yourself (brew install --cask blackhole-2ch, a restart is required; the app neither bundles nor installs it). In Audio MIDI Setup, create a Multi-Output Device (BlackHole + your speakers), set it as the system output, then pick "BlackHole 2ch" under Settings → Audio input device to transcribe what your Mac is playing.',
+    'Keep "System audio" selected under Settings → Audio input device: the app natively captures everything your computer is playing (supported on macOS 13.2+ and Windows — no virtual audio device needed). For Chinese content, set the recognition language to "Simplified Chinese": auto-detection can misjudge the language on short system-audio segments.',
   'help.pressTo': 'Press',
   'help.visitProject': 'Visit the',
   'help.onPage': 'on'

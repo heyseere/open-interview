@@ -110,6 +110,8 @@ export const zhCN = {
   'settings.localVerifyHint': '录制 3 秒并直接返回识别结果，不会发送给 AI',
   'settings.localVerifyResult': '识别结果',
   'settings.localVerifyNoSpeech': '未识别到语音，请检查输入设备或再试一次',
+  'settings.localVerifySilent':
+    '试录期间没有采集到声音：请确认系统正在播放音频，或更换输入设备后重试',
   'settings.localVerifyDone': '本地识别验证成功',
 
   // Settings page
@@ -129,7 +131,8 @@ export const zhCN = {
   'settings.vadSilenceLabel': '静音判定时长',
   'settings.vadSilenceHint': '静音达到该时长即自动提交',
   'settings.inputDeviceLabel': '音频输入设备',
-  'settings.inputDeviceHint': '留空则使用系统默认采集；点右侧按钮读取设备名称（会请求麦克风权限）',
+  'settings.inputDeviceHint':
+    '默认「系统音频」直接采集系统正在播放的声音；选择麦克风则按设备采集（点右侧按钮读取设备名称，会请求麦克风权限）',
   'settings.refreshDevicesHint': '读取设备名称（需要麦克风权限）',
   'settings.inputDevicePlaceholder': '请选择输入设备',
   'settings.systemAudio': '系统音频',
@@ -307,9 +310,9 @@ export const zhCN = {
     '开始转录，再次按下该快捷键即可停止转录，并把转录文本直接发送给 AI 生成回答（不会附带屏幕截图）。转录与截图相互独立，互不影响。',
   'help.faq6Q': '转录的文本可以单独清除吗？',
   'help.faq6A': '即可清除当前转录文本，清除后的文本不会提交给 AI。转录发送成功后也会自动清除。',
-  'help.faq7Q': 'macOS 上如何采集系统声音（而非麦克风）？',
+  'help.faq7Q': '如何转录系统正在播放的声音（而非麦克风）？',
   'help.faq7A':
-    '自行安装 BlackHole 虚拟声卡（brew install --cask blackhole-2ch，需重启；应用不捆绑、不代装），在「音频 MIDI 设置」中新建多输出设备（勾选 BlackHole 与扬声器）并设为系统输出，然后在「设置 → 音频输入设备」中选择 BlackHole 2ch，即可转录系统正在播放的声音。',
+    '在「设置 → 音频输入设备」中保持「系统音频」即可：应用会原生采集系统正在播放的所有声音（macOS 13.2+ 与 Windows 均支持，无需安装任何虚拟声卡）。识别中文内容时建议把「识别语言」选为「简体中文」：自动检测在系统声音的短分段上可能误判语言。',
   'help.pressTo': '按下',
   'help.visitProject': '您可以访问本项目',
   'help.onPage': '在'

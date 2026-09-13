@@ -221,6 +221,9 @@ function handleAudioChunk(chunk: ArrayBuffer) {
   if (!chunkedRuntime || chunkedRuntime.stopping) return
 
   const runtime = chunkedRuntime
+  if (runtime.processedChunks === 0 && runtime.queue.length === 0 && runtime.pending.length === 0) {
+    console.info(`[asr] first audio chunk: ${chunk.byteLength} bytes`)
+  }
   runtime.pending = Buffer.concat([runtime.pending, Buffer.from(chunk)])
   while (runtime.pending.length >= runtime.chunkBytes) {
     const nextChunk = Buffer.from(runtime.pending.subarray(0, runtime.chunkBytes))
