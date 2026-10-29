@@ -1,0 +1,107 @@
+@import 'tailwindcss';
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+/* One dark world: `color-scheme` also darkens the things CSS cannot reach —
+   native scrollbars, form-control internals and the select popup. Without it a
+   scrollable panel (e.g. the history list) renders a bright system scrollbar
+   against the glass. */
+:root {
+  color-scheme: dark;
+}
+
+/* Dark glass theme — the app is one dark world. Values come from the exact
+   Tailwind palette stops the glass tokens use, so default shadcn primitives
+   (Button/Input/Select/Dialog/Switch/…) sit on the same surface as coder. */
+:root {
+  --background: oklch(21% 0.034 264.665); /* gray-900 */
+  --foreground: oklch(92.8% 0.006 264.531); /* gray-200 */
+  --card: oklch(21% 0.034 264.665);
+  --card-foreground: oklch(92.8% 0.006 264.531);
+  --popover: color-mix(in oklab, oklch(21% 0.034 264.665) 90%, transparent); /* veil-3 glass */
+  --popover-foreground: oklch(92.8% 0.006 264.531);
+  --primary: oklch(54.6% 0.245 262.881); /* action blue-600 */
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(27.8% 0.033 256.848); /* gray-800 */
+  --secondary-foreground: oklch(92.8% 0.006 264.531);
+  --muted: oklch(27.8% 0.033 256.848);
+  --muted-foreground: oklch(70.7% 0.022 261.325); /* gray-400 */
+  --accent: color-mix(in oklab, white 10%, transparent); /* hover wash */
+  --accent-foreground: oklch(92.8% 0.006 264.531);
+  --destructive: oklch(63.7% 0.237 25.331); /* red-500 */
+  --destructive-foreground: oklch(1 0 0);
+  --border: color-mix(in oklab, white 10%, transparent); /* hairline */
+  --input: color-mix(in oklab, white 10%, transparent);
+  --ring: oklch(70.7% 0.165 254.624); /* live blue-400 */
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Open Interview semantic surface tokens — one name per role, never per taste.
+   Each value is color-mixed from the exact Tailwind palette stop it replaced,
+   so tokens render identically to the raw classes they stand for. */
+@theme {
+  /* Glass surfaces (veil tiers + band + hairlines) */
+  --color-veil: color-mix(in oklab, oklch(21% 0.034 264.665) 70%, transparent); /* gray-900/70 */
+  --color-veil-2: color-mix(in oklab, oklch(21% 0.034 264.665) 80%, transparent); /* gray-900/80 */
+  --color-veil-3: color-mix(in oklab, oklch(21% 0.034 264.665) 90%, transparent); /* gray-900/90 */
+  --color-band: color-mix(in oklab, oklch(37.3% 0.034 259.733) 80%, transparent); /* gray-700/80 */
+  --color-band-wash: color-mix(in oklab, oklch(44.6% 0.03 256.802) 10%, transparent); /* gray-600/10 */
+  --color-hairline: color-mix(in oklab, white 10%, transparent); /* glass border + hover wash */
+  --color-hairline-2: color-mix(in oklab, white 20%, transparent); /* divider, meter track */
+  --color-ink: oklch(92.8% 0.006 264.531); /* gray-200 */
+  --color-ink-soft: oklch(87.2% 0.01 258.338); /* gray-300 */
+  --color-ink-faint: oklch(70.7% 0.022 261.325); /* gray-400 */
+  --color-ink-ghost: oklch(55.1% 0.027 264.364); /* gray-500 */
+  --color-live: oklch(70.7% 0.165 254.624); /* blue-400: active icon */
+  --color-live-soft: oklch(80.9% 0.105 251.813); /* blue-300: icon hover / generating */
+  --color-live-wash: color-mix(in oklab, oklch(62.3% 0.214 259.815) 25%, transparent); /* blue-500/25 */
+  --color-action: oklch(54.6% 0.245 262.881); /* blue-600: solid accent */
+  --color-good: oklch(79.2% 0.209 151.711); /* green-400: level meter, live mic */
+  --color-good-soft: color-mix(in oklab, oklch(87.1% 0.15 154.449) 90%, transparent); /* green-300/90 */
+  --color-warn: oklch(82.8% 0.189 84.429); /* amber-400: warnings, unsaved mark */
+  --color-warn-soft: color-mix(in oklab, oklch(87.9% 0.169 91.605) 90%, transparent); /* amber-300/90 */
+  --color-bad: oklch(70.4% 0.191 22.216); /* red-400: errors, destructive affordance */
+  --color-bad-soft: color-mix(in oklab, oklch(80.8% 0.114 19.571) 90%, transparent); /* red-300/90 */
+
+  /* Glass canvas + raised panels: the whole window is one frosted sheet
+     (bg-canvas + backdrop blur); content panels lift off it with a white
+     wash instead of borders. */
+  --color-canvas: color-mix(in oklab, oklch(21% 0.034 264.665) 82%, transparent); /* gray-900/82 */
+  --color-panel: color-mix(in oklab, white 5%, transparent); /* raised panel wash */
+
+  /* Shared type scale */
+  --text-micro: 11px; /* micro labels (status bar, group captions) */
+
+  /* Layered elevation, macOS-style: 0.5px hairline ring + soft spread (dark
+     mode needs ~2x opacity so shadows still read on near-black surfaces) */
+  --shadow-card: 0 0 0 0.5px rgb(255 255 255 / 4%), 0 1px 2px rgb(0 0 0 / 0.2),
+    0 4px 16px rgb(0 0 0 / 0.15);
+  --shadow-modal: 0 0 0 0.5px rgb(255 255 255 / 6%), 0 4px 12px rgb(0 0 0 / 0.3),
+    0 16px 48px rgb(0 0 0 / 0.35);
+}

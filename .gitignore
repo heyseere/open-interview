@@ -1,0 +1,17 @@
+node_modules
+out
+dist
+build/whisper
+.DS_Store
+.eslintcache
+*.log*
+*.tsbuildinfo
+.env*
+.serena/
+
+# AI assistant working files (kept local, not part of the repository)
+AGENTS.md
+CLAUDE.md
+.claude/
+.agents/
+.zcode/

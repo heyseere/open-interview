@@ -1,0 +1,116 @@
+@import './base.css';
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply text-foreground;
+  }
+}
+
+/* Accessibility floor: collapse every animation/transition when the user
+   asks the OS for reduced motion (dialogs, toasts, dwell fills, marquees). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The header is a bare drag strip: no bottom border, because the whole window
+   is one frosted sheet and a line there would cut it in half. Height stays
+   load-bearing — #app-content's calc height and the drag region depend on it. */
+#app-header {
+  @apply h-9 text-white;
+  -webkit-app-region: drag;
+  .actions {
+    -webkit-app-region: no-drag;
+  }
+}
+
+/* The calc height is load-bearing for the settings/help/permissions pages
+   (their own scroll container); coder overrides it with min-h-0 flex-1. The
+   page background comes from the glass canvas on each layout root. */
+#app-content {
+  @apply h-[calc(100vh-36px)] overflow-y-auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+#app-content:hover {
+  scrollbar-color: rgb(255 255 255 / 0.15) transparent;
+}
+#app-content::-webkit-scrollbar {
+  width: 4px;
+}
+#app-content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+#app-content:hover::-webkit-scrollbar-thumb {
+  background: rgb(255 255 255 / 0.15);
+}
+
+/* Answer text scaling (答案字号 setting → --oi-answer-font, set in App.tsx):
+   fenced code stays proportionally smaller than the surrounding prose */
+.oi-answer pre code {
+  font-size: 0.85em;
+}
+
+/* Display math ($$…$$ → KaTeX): a wide formula scrolls inside its own block
+   instead of pushing the whole answer sideways in a narrow window. */
+.oi-answer .katex-display {
+  margin: 0.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.15em;
+}
+.oi-answer .katex {
+  font-size: 1.05em;
+}
+
+.transcription-scroll {
+  overflow: auto;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.transcription-scroll:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+.transcription-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.transcription-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+.transcription-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Quiet scrollbar for panels INSIDE the glass (history list, conversation
+   turns). Same recipe as #app-content/transcription-scroll so every scrollable
+   region in the app behaves identically instead of falling back to the system
+   scrollbar, which reads as a bright rail on a dark panel. */
+.scroll-quiet {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-quiet:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+.scroll-quiet::-webkit-scrollbar {
+  width: 4px;
+}
+.scroll-quiet::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 2px;
+}
+.scroll-quiet:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}

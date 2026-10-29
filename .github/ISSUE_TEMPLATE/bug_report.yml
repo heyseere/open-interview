@@ -1,0 +1,42 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / console output
+      description: Optional — DevTools console output, or terminal output when running from source.
