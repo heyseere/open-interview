@@ -41,6 +41,12 @@ import { applyDockVisibility, loadEncryptedSecrets, settings } from './settings'
 import { disposeWhisperServer } from './whisper-server'
 import { adoptRunningExamChrome, shutdownExamChrome } from './chrome-fullpage'
 
+// Hermetic runs (smoke, CDP harness): point userData at a throwaway dir via
+// env before anything reads it — keeps the real profile and the login keychain
+// (safe storage) out of automated packaged-app verification.
+const userDataOverride = process.env.OPEN_INTERVIEW_USER_DATA_DIR
+if (userDataOverride) app.setPath('userData', userDataOverride)
+
 // Enable Chromium's native system-audio loopback for getDisplayMedia on macOS
 // (ScreenCaptureKit path). Without these hidden flags Electron only supports
 // `audio: 'loopback'` on Windows; with them the same no-driver loopback the

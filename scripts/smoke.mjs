@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 
 /**
@@ -65,7 +66,15 @@ if (existsSync(bundledEnginePath)) {
 }
 
 console.log(`[smoke] launching ${appPath}`)
-const child = spawn(appPath, { stdio: ['ignore', 'pipe', 'pipe'] })
+// Hermetic run: point userData at a throwaway dir so the app never reads or
+// mutates the real profile — and never touches the login keychain, where a
+// freshly built (ad-hoc signed) binary would otherwise trip a modal keychain
+// ACL prompt that blocks startup until a human answers it.
+const userDataDir = mkdtempSync(join(tmpdir(), 'open-interview-smoke-'))
+const child = spawn(appPath, {
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, OPEN_INTERVIEW_USER_DATA_DIR: userDataDir }
+})
 let output = ''
 child.stdout.on('data', (chunk) => (output += chunk.toString()))
 child.stderr.on('data', (chunk) => (output += chunk.toString()))

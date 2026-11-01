@@ -79,12 +79,11 @@ function saveStore(store: SecureStore): void {
   }
 }
 
-// encryptString/decryptString use the async variants: the synchronous ones
-// are deprecated in Electron 45 and removed in 46. isEncryptionAvailable has
-// no async variant on 44 — revisit when upgrading to 45+.
-export function isEncryptionAvailable(): boolean {
+// All safeStorage access uses the async variants: the synchronous ones are
+// deprecated in Electron 45 and removed in 46.
+export async function isEncryptionAvailable(): Promise<boolean> {
   try {
-    return safeStorage.isEncryptionAvailable()
+    return await safeStorage.isAsyncEncryptionAvailable()
   } catch {
     return false
   }
@@ -96,7 +95,7 @@ export function isEncryptionAvailable(): boolean {
 const decryptedCache = new Map<SecretField, string>()
 
 export async function getSecret(field: SecretField): Promise<string> {
-  if (!isEncryptionAvailable()) return ''
+  if (!(await isEncryptionAvailable())) return ''
   const cached = decryptedCache.get(field)
   if (cached !== undefined) return cached
   const store = loadStore()
@@ -125,7 +124,7 @@ export async function setSecret(field: SecretField, value: string): Promise<void
     deleteSecret(field)
     return
   }
-  if (!isEncryptionAvailable()) return
+  if (!(await isEncryptionAvailable())) return
   try {
     const store = loadStore()
     store.encrypted[field] = (await safeStorage.encryptStringAsync(value)).toString('base64')
