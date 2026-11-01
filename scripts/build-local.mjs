@@ -5,10 +5,10 @@ import { spawn } from 'node:child_process'
  *   - skips code signing (`CSC_IDENTITY_AUTO_DISCOVERY=false`) so no keychain
  *     prompts or Apple timestamp round-trips can stall the build
  *   - produces an unpacked app bundle only (`--dir`), no DMG / zip
- * Cross-platform (no shell env-var syntax), so it also works on Windows.
+ * macOS-only: electron-builder is invoked with a hard-coded `--mac --dir`.
  *
  * Usage: npm run build:local
- * Output: dist/mac-arm64/Open Interview.app (or dist/win-unpacked on Windows)
+ * Output: dist/mac-arm64/Open Interview.app
  */
 /**
  * @param {string} command

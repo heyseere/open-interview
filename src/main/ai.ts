@@ -112,11 +112,7 @@ export function getSolutionStream(messages: ModelMessage[], abortSignal?: AbortS
 }
 
 export function getGeneralStream(messages: ModelMessage[], abortSignal?: AbortSignal) {
-  return createModelStream(
-    messages,
-    abortSignal,
-    '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。'
-  )
+  return createModelStream(messages, abortSignal, tMain('prompt.multiScreenshotNote'))
 }
 
 /**

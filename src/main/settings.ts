@@ -2,6 +2,13 @@ import { app, dialog, ipcMain } from 'electron'
 import type { BrowserWindow } from 'electron'
 import { z } from 'zod'
 import type { LocalAsrLanguage, LocalAsrModelSize } from '../shared/asr'
+import { LANGUAGES, type Language } from '../shared/i18n'
+import {
+  PROVIDER_KINDS,
+  REASONING_EFFORTS,
+  type ProviderKind,
+  type ReasoningEffort
+} from '../shared/providers'
 import { listOpenAIModels } from './openai-models'
 import {
   LEGACY_API_KEY_FIELD,
@@ -86,17 +93,16 @@ ipcMain.handle('getAppSettings', async () => {
 const settingsPatchSchema = z
   .object({
     providerId: z.string(),
-    providerKind: z.enum(['openai', 'generic', 'deepseek', 'zhipu', 'qwen']),
+    providerKind: z.enum(PROVIDER_KINDS),
     apiBaseURL: z.string(),
-    apiKey: z.string(),
     model: z.string(),
     customPrompt: z.string(),
-    reasoningEffort: z.enum(['off', 'low', 'medium', 'high']),
+    reasoningEffort: z.enum(REASONING_EFFORTS),
     screenshotAutoSave: z.boolean(),
     screenshotDir: z.string(),
     localAsrModelSize: z.string(),
     localAsrLanguage: z.string(),
-    language: z.enum(['zh-CN', 'en']),
+    language: z.enum(LANGUAGES),
     privacyMode: z.boolean(),
     audioInputDeviceId: z.string()
   })
@@ -107,17 +113,15 @@ ipcMain.handle('updateAppSettings', async (_event, _settings: unknown) => {
   if (!parsed.success) return
   const patch = parsed.data as Partial<AppSettings>
 
-  const providerId = patch.providerId ?? ''
-  const incomingKey = patch.apiKey
   Object.assign(settings, patch)
 
+  const providerId = patch.providerId ?? ''
   if (providerId) {
-    // The payload carries the ACTIVE provider's key (empty when the renderer
-    // never entered it this session). Only a non-empty incoming key may
-    // overwrite the encrypted map — an empty one just falls back to the saved
-    // credential instead of wiping it.
-    if (incomingKey) await setProviderApiKeys({ [providerId]: incomingKey })
-    settings.providerApiKey = incomingKey || (await getProviderApiKeys())[providerId] || ''
+    // Keys never travel through this payload: the settings page commits them
+    // via set-provider-api-key on blur, and the encrypted map is the only
+    // credential source. Re-resolving here keeps the runtime key in step when
+    // the renderer switches the active provider.
+    settings.providerApiKey = (await getProviderApiKeys())[providerId] || ''
     settings.apiKey = settings.providerApiKey
   }
 
@@ -236,7 +240,7 @@ export const settings = {
   /** Provider the renderer has selected (only its key is loaded from secrets). */
   providerId: 'default',
   /** Provider family, decides the native thinking body fields (reasoning-body.ts). */
-  providerKind: 'generic' as 'openai' | 'generic' | 'deepseek' | 'zhipu' | 'qwen',
+  providerKind: 'generic' as ProviderKind,
   apiBaseURL: process.env.API_BASE_URL || '',
   /** Effective key of the active provider (loaded from the encrypted map). */
   providerApiKey: process.env.API_KEY || '',
@@ -250,13 +254,13 @@ export const settings = {
    * metadata. 'off' sends no generic reasoning parameter (and explicitly
    * disables provider-native thinking where the provider defaults it on).
    */
-  reasoningEffort: 'off' as 'off' | 'low' | 'medium' | 'high',
+  reasoningEffort: 'off' as ReasoningEffort,
   screenshotAutoSave: false,
   screenshotDir: '',
   localAsrModelSize: 'base' as LocalAsrModelSize,
   localAsrLanguage: 'auto' as LocalAsrLanguage,
   /** UI language, synced from the renderer settings store */
-  language: 'zh-CN' as 'zh-CN' | 'en',
+  language: 'zh-CN' as Language,
   /**
    * Privacy mode (off by default, toggleable from the header shield button):
    * window invisible to screen sharing/recording, hidden macOS dock icon,

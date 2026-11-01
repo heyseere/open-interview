@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { measureScrollState } from './scroll-state'
+import { measureScrollState, scrollByPage } from './scroll-state'
 
 const base = { scrollTop: 0, scrollHeight: 1000, clientHeight: 400 }
 
@@ -45,5 +45,35 @@ describe('measureScrollState', () => {
     const state = measureScrollState({ scrollTop: 0, scrollHeight: 200, clientHeight: 400 })
     expect(state.scrollable).toBe(false)
     expect(state.atTop && state.atBottom).toBe(true)
+  })
+})
+
+describe('scrollByPage', () => {
+  /** Minimal container double recording its scrollTo calls. */
+  const makeContainer = (scrollTop: number) => {
+    const calls: Array<{ top: number; behavior: string }> = []
+    return {
+      calls,
+      scrollTop,
+      clientHeight: 500,
+      scrollTo(options: { top: number; behavior: string }) {
+        calls.push(options)
+      }
+    }
+  }
+
+  it.each([
+    ['down', 1, 100, 500],
+    ['up', -1, 100, -300]
+  ])('steps %s by 0.8 of the viewport with a smooth scroll', (_dir, direction, scrollTop, top) => {
+    const container = makeContainer(scrollTop)
+    scrollByPage(container, direction as -1 | 1)
+    expect(container.calls).toEqual([{ top, behavior: 'smooth' }])
+  })
+
+  it('does not clamp at the edges — scrollTo clamps natively', () => {
+    const container = makeContainer(0)
+    scrollByPage(container, -1)
+    expect(container.calls[0].top).toBe(-400)
   })
 })

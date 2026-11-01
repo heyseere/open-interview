@@ -157,8 +157,11 @@ export function AppHeader() {
           icon={HelpCircle}
           onTrigger={() => navigate('/help')}
         />
+        {/* Closing the window is irreversible and must never fire on a stray
+            hover: durationMs 0 makes this button click-only even when the
+            hover-trigger setting is on (the glass tooltip still explains it). */}
         <DwellIconButton
-          durationMs={dwell()}
+          durationMs={0}
           title={t('header.close')}
           icon={X}
           onTrigger={() => window.close()}

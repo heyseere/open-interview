@@ -26,7 +26,7 @@ export function SectionCard({
         <Icon className="size-5 mr-2" />
         {title}
         {description ? (
-          <span className="ml-2 pt-1 text-xs font-light text-muted-foreground">{description}</span>
+          <span className="ml-2 pt-1 text-xs text-muted-foreground">{description}</span>
         ) : null}
         {actions ? <div className="ml-auto">{actions}</div> : null}
       </h2>

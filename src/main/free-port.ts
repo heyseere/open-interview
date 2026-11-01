@@ -10,7 +10,7 @@ import { createServer } from 'node:net'
  * tiny, and both callers retry on failure.
  */
 
-export function isPortFree(port: number): Promise<boolean> {
+function isPortFree(port: number): Promise<boolean> {
   return new Promise((resolve) => {
     const server = createServer()
     server.once('error', () => resolve(false))

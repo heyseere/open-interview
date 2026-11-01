@@ -17,9 +17,21 @@ export function useWindowSize(): WindowDimensions {
   })
 
   useEffect(() => {
-    const onResize = () => setSize({ width: window.innerWidth, height: window.innerHeight })
+    // Drag-resize storms arrive per-frame; coalesce onto one rAF so each
+    // frame settles for a single setState instead of one per resize event.
+    let frame: number | null = null
+    const onResize = () => {
+      if (frame !== null) return
+      frame = requestAnimationFrame(() => {
+        frame = null
+        setSize({ width: window.innerWidth, height: window.innerHeight })
+      })
+    }
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
   }, [])
 
   return size

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { platformAlt } from '../utils/env'
+import { ShortcutStatus } from '@shared/shortcut-status'
 import type { TranslationKey } from '../i18n'
 
 /**
@@ -127,12 +128,9 @@ export type Shortcut = {
   status?: ShortcutStatus
 }
 
-export enum ShortcutStatus {
-  Registered = 'registered',
-  Failed = 'failed',
-  /** Shortcut is available to register but not registered. */
-  Available = 'available'
-}
+// Registration outcome lives in @shared/shortcut-status (main + preload +
+// renderer read one declaration); re-exported for the settings recorder.
+export { ShortcutStatus }
 
 interface ShortcutsState {
   shortcuts: Record<string, Shortcut>
@@ -157,91 +155,76 @@ function isPersistedShortcutsState(value: unknown): value is PersistedShortcutsS
   return typeof value === 'object' && value !== null && 'shortcuts' in value
 }
 
-const defaultShortcuts: Record<string, Omit<Shortcut, 'defaultKey'>> = {
+/** Binding table for the default shortcuts; the record's key IS the action
+ * name (`buildDefaultShortcuts` injects it as the `action` field). */
+const defaultShortcuts: Record<string, Omit<Shortcut, 'defaultKey' | 'action'>> = {
   hideOrShowMainWindow: {
-    action: 'hideOrShowMainWindow',
     key: `${platformAlt}+H`,
     category: 'windowManagement'
   },
   ignoreOrEnableMouse: {
-    action: 'ignoreOrEnableMouse',
     key: `${platformAlt}+M`,
     category: 'windowManagement'
   },
   toggleMiniMode: {
-    action: 'toggleMiniMode',
     key: `${platformAlt}+L`,
     category: 'windowManagement'
   },
   takeScreenshot: {
-    action: 'takeScreenshot',
     key: `${platformAlt}+Enter`,
     category: 'screenshotAndAi'
   },
   appendScreenshot: {
-    action: 'appendScreenshot',
     key: `${platformAlt}+Shift+Enter`,
     category: 'screenshotAndAi'
   },
   captureFullPage: {
-    action: 'captureFullPage',
     key: `${platformAlt}+P`,
     category: 'screenshotAndAi'
   },
   stopSolutionStream: {
-    action: 'stopSolutionStream',
     key: `${platformAlt}+.`,
     category: 'screenshotAndAi'
   },
   followUpQuestion: {
-    action: 'followUpQuestion',
     key: `${platformAlt}+F`,
     category: 'screenshotAndAi'
   },
   toggleTranscription: {
-    action: 'toggleTranscription',
     key: `${platformAlt}+T`,
     category: 'screenshotAndAi'
   },
   clearTranscription: {
-    action: 'clearTranscription',
     key: `${platformAlt}+Shift+T`,
     category: 'screenshotAndAi'
   },
   switchScene: {
-    action: 'switchScene',
     key: `${platformAlt}+S`,
     category: 'screenshotAndAi'
   },
   opacityUp: {
-    action: 'opacityUp',
     key: 'CommandOrControl+]',
     category: 'windowManagement'
   },
   opacityDown: {
-    action: 'opacityDown',
     key: 'CommandOrControl+[',
     category: 'windowManagement'
   },
-  pageUp: { action: 'pageUp', key: 'CommandOrControl+J', category: 'navigation' },
-  pageDown: { action: 'pageDown', key: 'CommandOrControl+K', category: 'navigation' },
+  pageUp: { key: 'CommandOrControl+J', category: 'navigation' },
+  pageDown: { key: 'CommandOrControl+K', category: 'navigation' },
   moveMainWindowUp: {
-    action: 'moveMainWindowUp',
     key: 'CommandOrControl+Up',
     category: 'windowMovement'
   },
   moveMainWindowDown: {
-    action: 'moveMainWindowDown',
     key: 'CommandOrControl+Down',
     category: 'windowMovement'
   },
   moveMainWindowLeft: {
-    action: 'moveMainWindowLeft',
     key: 'CommandOrControl+Left',
     category: 'windowMovement'
   },
   moveMainWindowRight: {
-    action: 'moveMainWindowRight',
     key: 'CommandOrControl+Right',
     category: 'windowMovement'
   }
@@ -265,7 +248,8 @@ function buildDefaultShortcuts(): Record<string, Shortcut> {
   return Object.fromEntries(
     Object.entries(defaultShortcuts).map(([action, shortcut]) => [
       action,
-      { ...shortcut, defaultKey: shortcut.key }
+      // The table's key is the action name — inject it as the field here.
+      { ...shortcut, action, defaultKey: shortcut.key }
     ])
   )
 }

@@ -374,8 +374,10 @@ async function runScreenshotTurn(
   currentSessionRecord = null
   const requestMessages = startWithImage(conversation, images)
   mainWindow.webContents.send('solution-clear')
+  // The full gallery is the single screenshot payload — the renderer derives
+  // the "latest image" from it. A separate screenshot-taken event used to
+  // duplicate the same ~1.2MB base64 over IPC on every capture.
   mainWindow.webContents.send('screenshots-updated', conversation.screenshots)
-  mainWindow.webContents.send('screenshot-taken', images[0])
 
   await runConversationTurn(mainWindow, requestMessages, 'solution', seq)
 }
@@ -498,7 +500,6 @@ export async function appendScreenshotSession(): Promise<void> {
   if (!screenshotData) return
 
   const requestMessages = appendImage(conversation, screenshotData)
-  mainWindow.webContents.send('screenshot-taken', screenshotData)
   mainWindow.webContents.send('screenshots-updated', conversation.screenshots)
   emitTurnSeparator(mainWindow)
 

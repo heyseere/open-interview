@@ -43,7 +43,7 @@ export function SettingsRow({
   const labelNode = (
     <label className="text-sm font-medium">
       {label}
-      {hint ? <span className="ml-2 text-xs font-light text-muted-foreground">{hint}</span> : null}
+      {hint ? <span className="ml-2 text-xs text-muted-foreground">{hint}</span> : null}
     </label>
   )
   if (stacked) {

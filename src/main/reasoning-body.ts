@@ -12,11 +12,12 @@
  * Pure functions, unit-tested; the request-body merge lives in ai.ts.
  */
 
-/** Provider families with a native thinking switch. */
-export const THINKING_KINDS = ['openai', 'generic', 'deepseek', 'zhipu', 'qwen'] as const
-export type ThinkingKind = (typeof THINKING_KINDS)[number]
+import type { ProviderKind, ReasoningEffort } from '../shared/providers'
 
-export type ThinkingEffort = 'off' | 'low' | 'medium' | 'high'
+/** Provider families with a native thinking switch (all of them, today). */
+export type ThinkingKind = ProviderKind
+
+export type ThinkingEffort = ReasoningEffort
 
 export interface ThinkingBodyOptions {
   kind: ThinkingKind

@@ -97,7 +97,7 @@ export function FollowUpDialog({ open, onOpenChange }: FollowUpDialogProps) {
             }}
           />
           {submitError && (
-            <p className="mt-2 text-xs text-bad" role="alert">
+            <p className="mt-2 text-xs text-bad-soft" role="alert">
               {submitError}
             </p>
           )}

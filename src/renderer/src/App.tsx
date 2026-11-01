@@ -21,11 +21,10 @@ import { useSolutionStore } from '@/lib/store/solution'
 import { useI18n } from '@/lib/i18n'
 import { isMouseButtonBinding, getMouseButtonAccelerator } from '@/lib/utils/keyboard'
 import { toAppSettings } from '@/lib/app-settings-payload'
-import { maybeSeedDemoContent } from '@/lib/demo-seed'
 
 export default function App() {
   const [initialized, setInitialized] = useState(false)
-  const { shortcuts } = useShortcutsStore()
+  const shortcuts = useShortcutsStore((state) => state.shortcuts)
   const { t } = useI18n()
   const answerFontSize = useSettingsStore((state) => state.answerFontSize)
 
@@ -144,8 +143,9 @@ export default function App() {
 
   // Visual-verification seed (scripts/shot.mjs): `#/?demo=1` fills the answer
   // surface with sample content instead of calling the AI. No-op otherwise.
+  // Dynamically imported so the demo-only chunk stays out of the main bundle.
   useEffect(() => {
-    maybeSeedDemoContent()
+    void import('@/lib/demo-seed').then((mod) => mod.maybeSeedDemoContent())
   }, [])
 
   // Streaming lifecycle events are window-global: subscribe them in this
@@ -154,11 +154,12 @@ export default function App() {
   // stuck, answer text gone.
   useEffect(() => {
     const solution = useSolutionStore.getState()
-    window.api.onScreenshotTaken((data) => {
-      solution.setScreenshotData(data)
-    })
+    // The gallery is the single screenshot payload; the latest capture is its
+    // last entry (appendImage pushes to the end). The separate screenshot-taken
+    // event used to re-send the same base64 over IPC on every capture.
     window.api.onScreenshotsUpdated((screenshots) => {
       solution.setRecentScreenshots(screenshots)
+      solution.setScreenshotData(screenshots.at(-1) ?? null)
     })
     window.api.onSolutionClear(() => {
       solution.clearSolution()
@@ -187,7 +188,6 @@ export default function App() {
       if (error) solution.setErrorMessage(error.message, error.action)
     })
     return () => {
-      window.api.removeScreenshotTakenListener()
       window.api.removeScreenshotsUpdatedListener()
       window.api.removeSolutionChunkListener()
       window.api.removeAiLoadingStartListener()

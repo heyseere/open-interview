@@ -66,11 +66,10 @@
    Each value is color-mixed from the exact Tailwind palette stop it replaced,
    so tokens render identically to the raw classes they stand for. */
 @theme {
-  /* Glass surfaces (veil tiers + band + hairlines) */
+  /* Glass surfaces (veil tiers + hairlines) */
   --color-veil: color-mix(in oklab, oklch(21% 0.034 264.665) 70%, transparent); /* gray-900/70 */
   --color-veil-2: color-mix(in oklab, oklch(21% 0.034 264.665) 80%, transparent); /* gray-900/80 */
   --color-veil-3: color-mix(in oklab, oklch(21% 0.034 264.665) 90%, transparent); /* gray-900/90 */
-  --color-band: color-mix(in oklab, oklch(37.3% 0.034 259.733) 80%, transparent); /* gray-700/80 */
   --color-band-wash: color-mix(in oklab, oklch(44.6% 0.03 256.802) 10%, transparent); /* gray-600/10 */
   --color-hairline: color-mix(in oklab, white 10%, transparent); /* glass border + hover wash */
   --color-hairline-2: color-mix(in oklab, white 20%, transparent); /* divider, meter track */
@@ -91,8 +90,10 @@
 
   /* Glass canvas + raised panels: the whole window is one frosted sheet
      (bg-canvas + backdrop blur); content panels lift off it with a white
-     wash instead of borders. */
-  --color-canvas: color-mix(in oklab, oklch(21% 0.034 264.665) 82%, transparent); /* gray-900/82 */
+     wash instead of borders. 92% (not 82%): at the default 0.8 window
+     opacity over a white exam page the composite must keep ink-faint/bad/
+     live text readable — 82% measured ink at 4.56:1 and bad at 1.95:1. */
+  --color-canvas: color-mix(in oklab, oklch(21% 0.034 264.665) 92%, transparent); /* gray-900/92 */
   --color-panel: color-mix(in oklab, white 5%, transparent); /* raised panel wash */
 
   /* Shared type scale */

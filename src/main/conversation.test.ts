@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -232,5 +232,24 @@ describe('conversation history archive', () => {
     const summaries = await history.listConversations()
     expect(summaries[0].title.endsWith('…')).toBe(true)
     expect(summaries[0].title.length).toBeLessThanOrEqual(31)
+  })
+
+  it('skips corrupt entries instead of crashing every history read', async () => {
+    const good = history.endTurn(null, [userMessage('完好会话')], '答')
+    await history.upsertSession(good)
+    // Simulate a hand-edited / half-corrupted file: legal JSON array with
+    // garbage entries (a null record used to make listConversations throw
+    // forever, since the bad cache was kept).
+    const raw = await readFile(join(dataDir, 'conversation-history.json'), 'utf-8')
+    const parsed = JSON.parse(raw) as unknown[]
+    await writeFile(
+      join(dataDir, 'conversation-history.json'),
+      JSON.stringify([null, 42, { noId: true }, { id: 7, turns: [] }, ...parsed])
+    )
+
+    const summaries = await history.listConversations()
+    expect(summaries).toHaveLength(1)
+    expect(summaries[0].title).toBe('完好会话')
+    expect(await history.getConversation(good.id)).not.toBeNull()
   })
 })

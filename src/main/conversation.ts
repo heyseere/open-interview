@@ -191,8 +191,19 @@ async function load(): Promise<ConversationRecord[]> {
   if (cache) return cache
   try {
     const raw = await readFile(getHistoryPath(), 'utf-8')
-    const parsed = JSON.parse(raw)
-    cache = Array.isArray(parsed) ? parsed : []
+    const parsed: unknown = JSON.parse(raw)
+    // Hand-edited or half-corrupted files must degrade to "fewer sessions",
+    // not crash every history read: listConversations destructures each
+    // record, so a null entry would throw forever (the bad cache is kept).
+    cache = Array.isArray(parsed)
+      ? parsed.filter(
+          (r): r is ConversationRecord =>
+            !!r &&
+            typeof r === 'object' &&
+            typeof (r as ConversationRecord).id === 'string' &&
+            Array.isArray((r as ConversationRecord).turns)
+        )
+      : []
   } catch {
     cache = []
   }

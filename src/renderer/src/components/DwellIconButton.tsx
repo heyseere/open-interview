@@ -60,6 +60,9 @@ export function DwellIconButton({
       ref={ref}
       durationMs={durationMs}
       title={title}
+      // Icon-only buttons are the tooltip problem surface: hovering to read
+      // the label would fire the dwell first, so the native title must go.
+      tooltip
       pressed={pressed}
       disabled={disabled}
       onTrigger={onTrigger}

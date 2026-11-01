@@ -6,6 +6,8 @@ import {
   type LocalAsrLanguage,
   type LocalAsrModelSize
 } from '@shared/asr'
+import type { Language } from '@shared/i18n'
+import { REASONING_EFFORTS, type ReasoningEffort } from '@shared/providers'
 import codingPrompt from './prompts/coding.md?raw'
 import englishExamPrompt from './prompts/english-exam.md?raw'
 import generalQaPrompt from './prompts/general-qa.md?raw'
@@ -30,7 +32,9 @@ export interface PromptScene {
   isPreset: boolean
 }
 
-export type Language = 'zh-CN' | 'en'
+// UI language — the vocabulary lives in @shared/i18n (main + renderer share
+// it); re-exported for the surfaces that read it from the settings store.
+export type { Language }
 export type UiLayout = 'standard' | 'compact'
 
 export interface WindowSize {
@@ -130,9 +134,10 @@ export const ANSWER_FONT_SIZES = { small: 12.5, medium: 14, large: 16 } as const
 export type AnswerFontSize = keyof typeof ANSWER_FONT_SIZES
 export const ANSWER_FONT_DEFAULT: AnswerFontSize = 'medium'
 
-/** Reasoning (deep-thinking) effort levels; 'off' sends no reasoning param. */
-export const REASONING_EFFORTS = ['off', 'low', 'medium', 'high'] as const
-export type ReasoningEffort = (typeof REASONING_EFFORTS)[number]
+/** Reasoning (deep-thinking) effort levels; 'off' sends no reasoning param.
+ * The vocabulary lives in @shared/providers (main's zod schema reads the same
+ * lists); re-exported for the settings UI. */
+export { REASONING_EFFORTS, type ReasoningEffort }
 const REASONING_EFFORT_DEFAULT: ReasoningEffort = 'off'
 
 /** Toolbar dwell stepper bounds: 0.2–1s in 0.1s steps, default 0.5s. */
@@ -473,30 +478,8 @@ export const useSettingsStore = create<SettingsStore>()(
         data.providers = state.providers.map((provider) => ({ ...provider, apiKey: '' }))
         return data as unknown as SettingsStore
       },
-      merge: (persisted, current) => {
-        const state = { ...current, ...(persisted as Partial<Settings>) }
-        // Ensure preset scenes always exist (keep user-edited prompts),
-        // so presets added in future versions show up for existing users
-        const persistedScenes = Array.isArray(state.scenes) ? state.scenes : []
-        state.scenes = [
-          ...createPresetScenes().map((p) => {
-            const saved = persistedScenes.find((s) => s.id === p.id)
-            // Restore the default prompt if a preset scene was left empty
-            return saved?.prompt.trim() ? saved : p
-          }),
-          ...persistedScenes.filter((s) => !s.isPreset)
-        ]
-        if (!state.scenes.some((s) => s.id === state.activeSceneId)) {
-          state.activeSceneId = CODING_SCENE_ID
-        }
-        state.customPrompt = composeCustomPrompt(state.scenes, state.activeSceneId)
-        state.providers = normalizeProviders(persisted)
-        state.toolbarButtons = normalizeToolbarButtons(state.toolbarButtons)
-        if (!state.providers.some((provider) => provider.id === state.activeProviderId)) {
-          state.activeProviderId = state.providers[0].id
-        }
-        return state
-      }
+      // Fold persisted bindings over the defaults; see mergePersistedSettings.
+      merge: mergePersistedSettings
     }
   )
 )
@@ -546,4 +529,37 @@ function normalizeProviders(persisted: unknown): ProviderConfig[] {
       : []
   }
   return [migrated]
+}
+
+/**
+ * Fold persisted settings over the defaults (the persist middleware's
+ * `merge`). Preset scenes always exist — user-edited prompts are kept, and a
+ * preset scene left empty falls back to its default prompt — so presets added
+ * in future versions show up for existing users. Stale scene/provider
+ * pointers fall back to the first entry. Exported pure so the rules stay
+ * unit-testable without localStorage.
+ */
+export function mergePersistedSettings(persisted: unknown, current: SettingsStore): SettingsStore {
+  const state = { ...current, ...(persisted as Partial<Settings>) }
+  // Ensure preset scenes always exist (keep user-edited prompts),
+  // so presets added in future versions show up for existing users
+  const persistedScenes = Array.isArray(state.scenes) ? state.scenes : []
+  state.scenes = [
+    ...createPresetScenes().map((p) => {
+      const saved = persistedScenes.find((s) => s.id === p.id)
+      // Restore the default prompt if a preset scene was left empty
+      return saved?.prompt.trim() ? saved : p
+    }),
+    ...persistedScenes.filter((s) => !s.isPreset)
+  ]
+  if (!state.scenes.some((s) => s.id === state.activeSceneId)) {
+    state.activeSceneId = CODING_SCENE_ID
+  }
+  state.customPrompt = composeCustomPrompt(state.scenes, state.activeSceneId)
+  state.providers = normalizeProviders(persisted)
+  state.toolbarButtons = normalizeToolbarButtons(state.toolbarButtons)
+  if (!state.providers.some((provider) => provider.id === state.activeProviderId)) {
+    state.activeProviderId = state.providers[0].id
+  }
+  return state
 }

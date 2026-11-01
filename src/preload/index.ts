@@ -14,9 +14,10 @@ import type {
 import type { OpenAIModelInfo } from '../main/openai-models'
 import type { ConversationRecord, ConversationSummary } from '../main/conversation'
 import type { SolutionErrorPayload } from '../shared/solution-error'
+import type { ShortcutStatus } from '../shared/shortcut-status'
 
 /** action → registration status returned by initShortcuts / updateShortcuts. */
-export type ShortcutRegistrationReport = Record<string, 'registered' | 'failed' | 'available'>
+export type ShortcutRegistrationReport = Record<string, ShortcutStatus>
 
 /**
  * Renderer-facing API surface, built from a channel manifest.
@@ -75,7 +76,6 @@ const INVOKE = {
  */
 const LISTEN = {
   SyncAppState: { channel: 'sync-app-state', unwrap: true, payload: null as AppState | null },
-  ScreenshotTaken: { channel: 'screenshot-taken', unwrap: true, payload: null as string | null },
   SolutionChunk: { channel: 'solution-chunk', unwrap: true, payload: null as string | null },
   SolutionComplete: { channel: 'solution-complete', unwrap: false },
   SolutionStopped: { channel: 'solution-stopped', unwrap: false },

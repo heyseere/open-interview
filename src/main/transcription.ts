@@ -123,7 +123,12 @@ async function startTranscription(options: TranscriptionStartOptions): Promise<v
   emitToRenderer('transcription-cleared')
   emitPartial('')
 
-  const modelSize = (options.modelSize || 'base') as LocalAsrModelSize
+  // Same whitelist guard as the setup handler: the size lands in a userData
+  // path and a child-process argument, so a foreign string must not pass.
+  const sizeInput = options.modelSize || 'base'
+  const modelSize = (
+    (LOCAL_ASR_SIZES as readonly string[]).includes(sizeInput) ? sizeInput : 'base'
+  ) as LocalAsrModelSize
   const languageInput = (options.language || 'auto') as string
   const language = (
     (LOCAL_ASR_LANGUAGES as readonly string[]).includes(languageInput) ? languageInput : 'auto'

@@ -198,14 +198,17 @@ async function portOwnerCommandLine(port: number): Promise<string | null> {
  * SingletonLock used to let any same-port browser (e.g. a tool-launched
  * default-profile Chrome with remote debugging) pose as the exam Chrome.
  *
- * When we still hold the pid we spawned, its own command line settles it
- * without any port lookup (fast path for the heartbeat).
+ * When we still hold the child we spawned, its liveness settles it without
+ * any subprocess: it was launched with exactly this port and profile dir, so
+ * a port that answers while our child lives cannot belong to an impostor.
+ * The old pidCommandLine fast path still spawned a process per heartbeat tick
+ * (and on Windows fell through to netstat + PowerShell, since there is no
+ * `ps`), three cold-start subprocesses every 3 seconds.
  */
 async function examChromeOwnsPort(port: number): Promise<boolean> {
-  const spawnedPid = spawnedExamChrome?.pid
-  if (spawnedPid) {
-    const own = await pidCommandLine(spawnedPid)
-    if (own && matchesExamChromeCommand(own, port, profileDir())) return true
+  const spawned = spawnedExamChrome
+  if (spawned && port === spawnedExamChromePort && spawned.exitCode === null && !spawned.killed) {
+    return true
   }
   const lockOwnerPid = profileOwnerPid()
   const command =
@@ -291,6 +294,8 @@ const EXAM_WATCH_INTERVAL_MS = 3000
 const EXAM_WATCH_MISSES = 2
 
 let spawnedExamChrome: ChildProcess | null = null
+/** Debug port passed to the spawned child — the fast-path identity anchor. */
+let spawnedExamChromePort: number | null = null
 let examWatchTimer: NodeJS.Timeout | null = null
 let examWatchMisses = 0
 
@@ -318,6 +323,7 @@ function startExamChromeWatch(port: number): void {
     if (examWatchMisses < EXAM_WATCH_MISSES) return
     stopExamChromeWatch()
     spawnedExamChrome = null
+    spawnedExamChromePort = null
     broadcastExamChromeState(false, null)
     emitToRenderer('ui-notify', tMain('chrome.examClosed'))
   }, EXAM_WATCH_INTERVAL_MS)
@@ -348,6 +354,7 @@ export function shutdownExamChrome(): void {
     }
   }
   spawnedExamChrome = null
+  spawnedExamChromePort = null
   try {
     const profile = profileDir()
     if (process.platform === 'win32') {
@@ -406,6 +413,7 @@ export async function launchDebugChrome(): Promise<{
       // Surfaced by the readiness poll below timing out
     })
     spawnedExamChrome = child
+    spawnedExamChromePort = port
   } catch (error) {
     const message = toErrorMessage(error, String(error))
     return { ok: false, error: tMain('chrome.launchFailed', { message }) }

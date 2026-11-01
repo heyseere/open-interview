@@ -1,7 +1,10 @@
 import type { TranslationParams } from './messages'
 
+/** UI languages the app ships, in table order (renderer + main process). */
+export const LANGUAGES = ['zh-CN', 'en'] as const
+
 /** UI language shared by the renderer and the main process. */
-export type Language = 'zh-CN' | 'en'
+export type Language = (typeof LANGUAGES)[number]
 
 /** Resolve {placeholder} tokens in a message template. */
 export function formatMessage(template: string, params?: TranslationParams): string {

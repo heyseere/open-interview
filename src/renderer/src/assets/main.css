@@ -9,6 +9,17 @@
   }
 }
 
+/* Accessibility floor: when the OS asks for less transparency or more
+   contrast, frosted glass is unreadable — swap the alpha-mixed canvas for a
+   solid one and strengthen the hairline. Unlayered :root so it wins over the
+   @theme values from base.css. */
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root {
+    --color-canvas: oklch(21% 0.034 264.665); /* gray-900, no alpha */
+    --color-hairline: rgb(255 255 255 / 25%);
+  }
+}
+
 /* Accessibility floor: collapse every animation/transition when the user
    asks the OS for reduced motion (dialogs, toasts, dwell fills, marquees). */
 @media (prefers-reduced-motion: reduce) {

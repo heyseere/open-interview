@@ -49,3 +49,18 @@ publish:
   repo: open-interview
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/
+# Harden the packaged binary (no effect in dev): with runAsNode off the app
+# cannot be run as plain Node (ELECTRON_RUN_AS_NODE=1), and with the inspect
+# fuses off it cannot be attached via --inspect / NODE_OPTIONS — either would
+# bypass the renderer IPC allowlist and reach the encrypted key store.
+# --remote-debugging-port (the CDP verification loop) is a Chromium switch and
+# stays available. process.fork is unused, so runAsNode: false is safe.
+# resetAdHocDarwinSignature: flipping fuses rewrites the main binary, which
+# invalidates the ad-hoc signature Electron ships with — without the reset the
+# arm64 macOS app is SIGKILLed at launch (Apple Silicon refuses binaries whose
+# signature does not match their bytes).
+electronFuses:
+  runAsNode: false
+  enableNodeCliInspectArguments: false
+  enableNodeOptionsEnvironmentVariable: false
+  resetAdHocDarwinSignature: true

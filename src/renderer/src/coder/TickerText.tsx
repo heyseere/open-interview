@@ -7,6 +7,7 @@ import { useEffect, useRef } from 'react'
 export function TickerText({ text, className }: { text: string; className?: string }) {
   const textRef = useRef<HTMLSpanElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const applyRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     const textEl = textRef.current
@@ -17,12 +18,21 @@ export function TickerText({ text, className }: { text: string; className?: stri
       const overflow = Math.max(0, textEl.scrollWidth - containerEl.clientWidth)
       textEl.style.transform = `translateX(${-overflow}px)`
     }
+    applyRef.current = apply
     apply()
     // The offset also goes stale when the CONTAINER resizes (compact panel
     // grip, window resize), so re-measure on size changes, not just text.
-    const observer = new ResizeObserver(apply)
+    // Mounted once for the component's lifetime — the old [text] dependency
+    // rebuilt (disconnect + new ResizeObserver) the observer per streamed
+    // chunk; text changes re-apply through the ref below instead.
+    const observer = new ResizeObserver(() => applyRef.current())
     observer.observe(containerEl)
     return () => observer.disconnect()
+  }, [])
+
+  // New content changes the text element's width: re-measure (no rebuild).
+  useEffect(() => {
+    applyRef.current()
   }, [text])
 
   return (

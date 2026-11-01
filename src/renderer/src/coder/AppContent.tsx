@@ -2,10 +2,9 @@ import { useEffect, useMemo } from 'react'
 import { useSolutionStore } from '@/lib/store/solution'
 import MarkdownRenderer from '@/components/MarkdownRenderer'
 import { screenshotDataUrl } from '@/lib/utils/image'
+import { scrollByPage } from '@/lib/utils/scroll-state'
 import { useI18n } from '@/lib/i18n'
 import { useKeepTopScroll } from './use-keep-top-scroll'
-
-const SCROLL_OFFSET = 120
 
 /** Shared screenshot-thumbnail look; gallery adds the hover shadow on top. */
 const THUMB_CLASS =
@@ -30,10 +29,7 @@ export function AppContent() {
     window.api.onScrollPageUp(() => {
       const container = document.getElementById('app-content')
       if (!container) return
-      container.scrollTo({
-        top: container.scrollTop - window.innerHeight + SCROLL_OFFSET,
-        behavior: 'smooth'
-      })
+      scrollByPage(container, -1)
     })
     return () => {
       window.api.removeScrollPageUpListener()
@@ -44,10 +40,7 @@ export function AppContent() {
     window.api.onScrollPageDown(() => {
       const container = document.getElementById('app-content')
       if (!container) return
-      container.scrollTo({
-        top: container.scrollTop + window.innerHeight - SCROLL_OFFSET,
-        behavior: 'smooth'
-      })
+      scrollByPage(container, 1)
     })
     return () => {
       window.api.removeScrollPageDownListener()

@@ -25,6 +25,10 @@ process.on('unhandledRejection', (error) => {
 process.on('uncaughtException', (error) => {
   if (isAbortError(error)) return
   console.error(error)
+  // An uncaught exception leaves the main process in an unknown state
+  // (passthrough, streams, child handles) — running on is worse than quitting,
+  // and will-quit below still disposes the whisper server and exam Chrome.
+  app.quit()
 })
 import { electronApp, optimizer } from '@electron-toolkit/utils'
 import './shortcuts'
@@ -91,6 +95,12 @@ app.whenReady().then(() => {
       callback(false)
     }
   })
+
+  // Same allowlist for the synchronous check path (enumerateDevices and
+  // similar APIs consult this without firing a request-handler callback).
+  session.defaultSession.setPermissionCheckHandler((_webContents, permission) =>
+    ['media', 'microphone', 'audio', 'display-capture'].includes(permission)
+  )
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.

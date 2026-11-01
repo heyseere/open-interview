@@ -53,7 +53,7 @@ function CaptureLevelMeter() {
  * settings / open permission center).
  */
 const ERROR_ACTION_CLASS =
-  'flex-shrink-0 cursor-pointer rounded px-1.5 py-0.5 text-xs text-bad-soft transition-colors hover:bg-bad/15 disabled:cursor-not-allowed disabled:opacity-50'
+  'flex-shrink-0 cursor-pointer rounded outline-none px-1.5 py-0.5 text-xs text-bad-soft transition-colors hover:bg-bad/15 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50'
 
 /**
  * Error row with a kind-aware action + close. The action comes with the
@@ -94,7 +94,7 @@ function ErrorRow({ compact = false }: { compact?: boolean }) {
     >
       <AlertCircle className="size-4 flex-shrink-0 text-bad" />
       <p
-        className={`min-w-0 flex-1 truncate text-bad-soft ${compact ? 'text-micro' : 'text-xs'}`}
+        className="min-w-0 flex-1 truncate text-xs text-bad-soft"
         title={errorMessage ?? undefined}
       >
         {errorMessage}
@@ -172,20 +172,31 @@ function TranscriptionRow() {
 }
 
 export function StatusBar({ compact = false }: { compact?: boolean }) {
+  // Branch BEFORE any store subscription: the compact bar renders only the
+  // error row, so it must not subscribe to the transcription text/partial —
+  // those churn every ~700ms while streaming and would re-render this bar
+  // for nothing (ErrorRow subscribes to the error itself).
+  if (compact) return <CompactStatusBar />
+  return <StandardStatusBar />
+}
+
+/** Compact bar: error row only — generation/transcription state lives in the toolbar + ticker. */
+function CompactStatusBar() {
+  const errorMessage = useSolutionStore((state) => state.errorMessage)
+  if (!errorMessage) return null
+  return (
+    <div className="shrink-0">
+      <ErrorRow compact />
+    </div>
+  )
+}
+
+function StandardStatusBar() {
   const isLoading = useSolutionStore((state) => state.isLoading)
   const errorMessage = useSolutionStore((state) => state.errorMessage)
   const isTranscribing = useTranscriptionStore((state) => state.isTranscribing)
   const transcriptionText = useTranscriptionStore((state) => state.transcriptionText)
   const partialText = useTranscriptionStore((state) => state.partialText)
-
-  if (compact) {
-    if (!errorMessage) return null
-    return (
-      <div className="shrink-0">
-        <ErrorRow compact />
-      </div>
-    )
-  }
 
   const showTranscription =
     isTranscribing || transcriptionText.trim().length > 0 || partialText.trim().length > 0

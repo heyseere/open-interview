@@ -38,7 +38,15 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: electron-build-${{ matrix.os }}
-          path: dist/** # electron-builder output folder
+          # Only the release job's inputs (installers + update manifests).
+          # dist/** would also carry win-unpacked / the unpacked .app —
+          # hundreds of MB of artifact nobody downloads.
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+            dist/*.dmg
+            dist/*.zip
+            dist/latest*.yml
 
   release:
     needs: build

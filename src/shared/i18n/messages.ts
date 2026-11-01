@@ -121,8 +121,8 @@ export const messages = {
     en: 'Failed to stop speech recognition'
   },
   'transcriptionError.startFailed': {
-    zh: '启动转录失败：请先完成一键配置，并检查系统权限',
-    en: 'Failed to start transcription — run one-click setup and check system permissions'
+    zh: '启动语音识别失败：请先完成一键配置，并检查系统权限',
+    en: 'Failed to start speech recognition — run one-click setup and check system permissions'
   },
   'transcriptionError.mediaPermissionDenied': {
     zh: '麦克风/屏幕录制权限被拒绝，请在 系统设置 → 隐私与安全性 中允许本应用',
@@ -528,7 +528,7 @@ export const messages = {
     zh: '打开追问输入框，继续当前对话',
     en: 'Open the follow-up input box'
   },
-  'shortcuts.toggleTranscription': { zh: '语音识别', en: 'Speech transcription' },
+  'shortcuts.toggleTranscription': { zh: '语音识别', en: 'Speech recognition' },
   'shortcuts.toggleTranscriptionDesc': {
     zh: '按一下开始听，再按一下停止并发送',
     en: 'Press once to start; press again to stop & submit'
@@ -825,7 +825,7 @@ export const messages = {
   },
   'help.faq7Q': {
     zh: '如何识别系统正在播放的声音（而不是麦克风）？',
-    en: 'How do I transcribe the audio my computer is playing (instead of the microphone)?'
+    en: 'How do I capture the audio my computer is playing (instead of the microphone)?'
   },
   'help.faq7A': {
     zh: '在「设置 → 音频输入设备」里选「系统音频」，就能识别电脑正在播放的声音（macOS 13.2+ 和 Windows 都支持，不用装任何额外软件）。识别中文时，建议把「识别语言」设为「简体中文」——自动检测在系统声音上偶尔会认错语言。',
@@ -917,6 +917,12 @@ export type TranslationParams = Record<string, string | number>
  * renderer table; the two key sets never overlap.
  */
 export const mainMessages = {
+  // AI stream prompt extras
+  'prompt.multiScreenshotNote': {
+    zh: '注意：如果有多张截图，请结合所有截图内容进行完整分析，不要遗漏任何部分。',
+    en: 'Note: if there are multiple screenshots, analyze all of them together for a complete answer — do not skip any part.'
+  },
+
   // Generic
   'err.unknown': { zh: '未知错误', en: 'Unknown error' },
 
@@ -966,7 +972,7 @@ export const mainMessages = {
   'err.actionFailed': { zh: '操作执行失败', en: 'Action failed' },
 
   // Transcription engine
-  'err.alreadyRunning': { zh: '语音识别正在进行中', en: 'Transcription is already running' },
+  'err.alreadyRunning': { zh: '语音识别正在进行中', en: 'Speech recognition is already running' },
   'err.transcribeFailed': { zh: '语音识别失败', en: 'Speech recognition failed' },
   'label.localModel': { zh: '本地模型', en: 'Local model' },
 

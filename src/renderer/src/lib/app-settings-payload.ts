@@ -17,6 +17,11 @@ type AppSettingsPayload = Parameters<typeof window.api.updateAppSettings>[0]
  * understands: main never needs to know the provider list, only the target it
  * must talk to (plus `providerKind` for the native thinking fields).
  *
+ * API keys never ride this payload: main's encrypted map is the only
+ * credential source and the settings page commits a key through
+ * set-provider-api-key on blur. Syncing the in-memory key here re-encrypted
+ * and re-wrote secure storage on every character typed into the key field.
+ *
  * The return type is `Partial<AppSettingsPayload>` so a field that main does
  * not know about cannot silently join the payload.
  */
@@ -41,7 +46,6 @@ export function toAppSettings(
     providerId: provider?.id ?? '',
     providerKind: provider?.kind ?? 'generic',
     apiBaseURL: provider?.baseURL ?? '',
-    apiKey: provider?.apiKey ?? '',
     model: provider?.model ?? '',
     customPrompt: settings.customPrompt,
     // The user's own choice — never masked by model-list detection, which is

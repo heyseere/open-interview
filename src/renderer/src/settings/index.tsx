@@ -140,6 +140,42 @@ function StatusRow({
   )
 }
 
+/**
+ * Shared judgment behind the two local-ASR status cards, so "what is missing"
+ * is worded in exactly one place:
+ * - `cli` — the engine card's CLI row: found or not, plus the missing-CLI
+ *   message (the card adds the provenance label for a found engine itself).
+ * - `model` — the engine card's model row ok flag.
+ * - `ready` — the readiness card's combined row: ready only when the CLI is
+ *   found AND the model is cached, naming whichever piece is missing.
+ * (The model row's download check stays at its call site: it judges the size
+ * selected in the UI via `cachedModels`, not the size the status was fetched
+ * for via `modelCached` — the two can differ until the status refreshes.)
+ */
+function asrStatusRow(
+  localStatus: LocalAsrStatus | null,
+  t: (key: TranslationKey) => string
+): {
+  cli: { ok: boolean; detail?: string }
+  model: { ok: boolean }
+  ready: { ok: boolean; detail?: string }
+} {
+  const cli = {
+    ok: localStatus?.cli === 'found',
+    detail: localStatus?.cli === 'missing' ? t('settings.localStatusCliMissing') : undefined
+  }
+  const modelOk = localStatus?.modelCached === true
+  const modelDetail =
+    localStatus && localStatus.modelCached !== true
+      ? t('settings.localModelNeedsDownload')
+      : undefined
+  return {
+    cli,
+    model: { ok: modelOk },
+    ready: { ok: cli.ok && modelOk, detail: cli.detail ?? modelDetail }
+  }
+}
+
 import { CustomShortcuts, ResetDefaultShortcuts } from './CustomShortcuts'
 import {
   Select,
@@ -247,6 +283,8 @@ export default function SettingsPage() {
   const promptDraft = activeScene ? (promptDrafts[activeScene.id] ?? activeScene.prompt) : ''
   const promptDirty = Boolean(activeScene) && promptDraft !== activeScene?.prompt
   const permsOk = permStatus?.microphone === 'granted' && permStatus?.screen === 'granted'
+  // One ASR judgment shared by the readiness card and the engine status card.
+  const asrStatus = asrStatusRow(localStatus, t)
 
   const clearPromptDraft = (sceneId: string) => {
     setPromptDrafts((prev) => {
@@ -483,16 +521,10 @@ export default function SettingsPage() {
           />
           <StatusRow
             label={t('settings.readinessAsr')}
-            ok={localStatus?.cli === 'found' && localStatus?.modelCached === true}
+            ok={asrStatus.ready.ok}
             pending={!localStatus}
             okLabel={t('settings.localStatusOk')}
-            detail={
-              localStatus?.cli === 'missing'
-                ? t('settings.localStatusCliMissing')
-                : localStatus && localStatus.modelCached !== true
-                  ? t('settings.localModelNeedsDownload')
-                  : undefined
-            }
+            detail={asrStatus.ready.detail}
           />
           <StatusRow
             label={t('settings.readinessPermissions')}
@@ -549,7 +581,7 @@ export default function SettingsPage() {
               <span
                 className={cn(
                   'min-w-0 flex-1 truncate text-right text-xs',
-                  connectionTestResult.ok ? 'text-good' : 'text-bad'
+                  connectionTestResult.ok ? 'text-good' : 'text-bad-soft'
                 )}
                 title={connectionTestResult.text}
               >
@@ -608,20 +640,19 @@ export default function SettingsPage() {
           <Well className="mt-2 divide-y divide-hairline text-sm">
             <StatusRow
               label={t('settings.localStatusCli')}
-              ok={localStatus?.cli === 'found'}
+              ok={asrStatus.cli.ok}
               okLabel={t('settings.localStatusOk')}
               pending={!localStatus}
               detail={
-                localStatus?.cli === 'missing'
-                  ? t('settings.localStatusCliMissing')
-                  : localStatus
-                    ? t(LOCAL_CLI_SOURCE_KEYS[localStatus.cliSource ?? 'path'])
-                    : undefined
+                asrStatus.cli.detail ??
+                (localStatus
+                  ? t(LOCAL_CLI_SOURCE_KEYS[localStatus.cliSource ?? 'path'])
+                  : undefined)
               }
             />
             <StatusRow
               label={`${t('settings.localStatusModel')} · ${localAsrModelSize}`}
-              ok={localStatus?.modelCached === true}
+              ok={asrStatus.model.ok}
               okLabel={t('settings.localStatusOk')}
               pending={!localStatus}
               detail={modelNeedsDownload ? t('settings.localModelNeedsDownload') : undefined}
@@ -703,7 +734,7 @@ export default function SettingsPage() {
 
           {!isSettingUpLocal && localSetupMessage && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-bad max-w-xl break-all">{localSetupMessage}</span>
+              <span className="text-xs text-bad-soft max-w-xl break-all">{localSetupMessage}</span>
               {setupErrorCode === 'brew-missing' && (
                 <Button
                   variant="outline"

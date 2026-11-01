@@ -6,7 +6,7 @@ import { GLASS_OVERLAY } from '@/lib/glass'
 import { DwellIconButton } from '@/components/DwellIconButton'
 import { useDwellMs } from '@/lib/use-dwell-ms'
 import { usePassthroughLift } from '@/lib/passthrough-lift'
-import { measureScrollState, type ScrollState } from '@/lib/utils/scroll-state'
+import { measureScrollState, scrollByPage, type ScrollState } from '@/lib/utils/scroll-state'
 
 /**
  * Right-edge page scroller (standard layout: fixed to the window; compact
@@ -28,8 +28,6 @@ import { measureScrollState, type ScrollState } from '@/lib/utils/scroll-state'
  * range, so a long page still shows which direction remains.
  */
 
-/** Fraction of the viewport moved by one click. */
-const PAGE_FRACTION = 0.8
 /** Continuous-scroll speed in px/s once the hover dwell completes. */
 const HOVER_SCROLL_SPEED = 900
 const SCROLL_CONTAINER_ID = 'app-content'
@@ -209,13 +207,11 @@ export function ScrollRail({
   // DwellClickable) keeps the buttons clickable over the compact drag region.
   const lift = usePassthroughLift()
 
-  /** Page step: one smooth 0.8-viewport move. */
+  /** Page step: one smooth 0.8-viewport move (the shared page-turn distance,
+      see scroll-state.scrollByPage). */
   const jump = (direction: -1 | 1) => {
     if (!element) return
-    element.scrollTo({
-      top: element.scrollTop + direction * element.clientHeight * PAGE_FRACTION,
-      behavior: 'smooth'
-    })
+    scrollByPage(element, direction)
   }
 
   /** End jump: straight to the first or last pixel. */

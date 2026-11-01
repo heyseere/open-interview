@@ -12,8 +12,11 @@
  */
 
 import type { TranslationKey } from '@/lib/i18n'
+import type { ProviderKind } from '@shared/providers'
 
-export type ProviderKind = 'openai' | 'generic' | 'deepseek' | 'zhipu' | 'qwen'
+// Provider-kind vocabulary lives in @shared/providers (one source for main +
+// renderer); re-exported here so the existing call sites keep their import.
+export type { ProviderKind }
 
 export interface ProviderPreset {
   id: string

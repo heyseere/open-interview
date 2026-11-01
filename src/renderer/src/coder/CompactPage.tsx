@@ -116,7 +116,7 @@ export function CompactPage() {
 
   return (
     <div
-      className="relative h-screen flex items-stretch px-3 pb-2 pt-2"
+      className="relative h-screen flex items-stretch px-3 pb-2 pt-2 overflow-hidden"
       style={{ WebkitAppRegion: 'drag' } as CSSProperties}
     >
       <div
@@ -158,10 +158,16 @@ export function CompactPage() {
       {/* Resize grip: anchored to the WINDOW corner, not the panel corner.
           The pill now floats at bottom-9 with the transcript strip under it,
           so the panel's bottom edge is live chrome at every size — the 12px
-          window margin keeps the grip clear of pill, strip and rail alike. */}
+          window margin keeps the grip clear of pill, strip and rail alike.
+          The 26px padded box doubles the hit target while the glyph stays at
+          its 2px corner distance: the padding ring is offset past the window
+          edge (clipped and inert), so the visible geometry is unchanged and
+          the pill/rail/ticker clearances still hold. The overhang must be
+          clipped at THIS root — 4px past the corner would otherwise become a
+          document overflow and give the window a native scrollbar. */}
       <div
         ref={gripLift.ref}
-        className={`absolute right-0.5 bottom-0.5 size-3.5 cursor-nwse-resize flex items-end justify-end ${ICON_DIM_SOFT}`}
+        className={`absolute -right-1 -bottom-1 size-6.5 cursor-nwse-resize p-1.5 flex items-end justify-end ${ICON_DIM_SOFT}`}
         style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}

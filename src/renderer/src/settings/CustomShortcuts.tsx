@@ -150,7 +150,7 @@ function Shortcut({
     >
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <label className="text-sm font-medium">{label}</label>
-        {description && <p className="text-xs font-light text-muted-foreground">{description}</p>}
+        {description && <p className="text-xs text-muted-foreground">{description}</p>}
         {occupied && !isRecording && (
           <StatusChip tone="warn" title={t('shortcuts.occupiedHint')}>
             <AlertTriangle className="size-3" />

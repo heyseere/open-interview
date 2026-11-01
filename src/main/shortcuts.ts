@@ -1,11 +1,10 @@
-import { globalShortcut, ipcMain, screen } from 'electron'
-import type { BrowserWindow, Rectangle } from 'electron'
-import { applyContentProtection } from './main-window'
-import { settings } from './settings'
-import { state, togglePassthrough } from './state'
+import { globalShortcut, ipcMain } from 'electron'
+import { hideOrShowMainWindow } from './main-window'
+import { togglePassthrough } from './state'
 import { tMain } from './i18n'
 import { emitToRenderer, coderPageWindow } from './renderer-send'
 import { clearTranscriptionText } from './transcription'
+import { ShortcutStatus } from '../shared/shortcut-status'
 import {
   startNewScreenshotSession,
   appendScreenshotSession,
@@ -21,161 +20,12 @@ type Shortcut = {
   registeredKeys: string[]
 }
 
-enum ShortcutStatus {
-  Registered = 'registered',
-  Failed = 'failed',
-  /** Shortcut is available to register but not registered. */
-  Available = 'available'
-}
-
 const MOVE_STEP = 200
 const shortcuts: Record<string, Shortcut> = {}
 
 /** Forward an opacity step to the renderer (+1 = more opaque, -1 = more transparent). */
 function adjustOpacity(direction: 1 | -1) {
   coderPageWindow()?.webContents.send('adjust-opacity', direction)
-}
-
-const FRONT_REASSERT_DURATION = 8000
-const FRONT_REASSERT_INTERVAL = 200
-const FRONT_RELATIVE_LEVEL = 100
-const BACKGROUND_GUARD_INTERVAL = 3000
-let frontReassertTimer: NodeJS.Timeout | null = null
-let backgroundGuardTimer: NodeJS.Timeout | null = null
-let isWindowSoftHidden = false
-let softHiddenBounds: Rectangle | null = null
-
-/**
- * Reassert always-on-top. `aggressive` also calls moveTop() which
- * brings the window above everything — only use on explicit user actions
- * (show, screenshot, etc.) to avoid disturbing interaction with other apps.
- * A no-op unless privacy mode is on: with the switch off the window is a
- * plain normal window and must never be forced back on top (the posture
- * lives in settings.applyWindowPosture).
- */
-function applyTopMost(win: BrowserWindow, aggressive = true) {
-  if (!win || win.isDestroyed()) return
-  if (!settings.privacyMode) return
-  win.setAlwaysOnTop(true, 'screen-saver', FRONT_RELATIVE_LEVEL)
-  if (aggressive) win.moveTop()
-}
-
-/**
- * Start a persistent low-frequency background guard that continuously
- * re-asserts always-on-top while the window is visible.
- * Uses the non-aggressive variant so it won't steal focus or
- * interfere with the user's interaction with other windows.
- */
-function startBackgroundGuard(window: BrowserWindow) {
-  if (backgroundGuardTimer) return // already running
-  backgroundGuardTimer = setInterval(() => {
-    if (!window || window.isDestroyed() || !window.isVisible()) {
-      stopBackgroundGuard()
-      return
-    }
-    applyTopMost(window, false)
-    // Re-assert stealth too: some platforms/apps can silently reset it
-    applyContentProtection(window)
-  }, BACKGROUND_GUARD_INTERVAL)
-}
-
-function stopBackgroundGuard() {
-  if (backgroundGuardTimer) {
-    clearInterval(backgroundGuardTimer)
-    backgroundGuardTimer = null
-  }
-}
-
-function stopFrontReassert() {
-  if (frontReassertTimer) {
-    clearInterval(frontReassertTimer)
-    frontReassertTimer = null
-  }
-}
-
-function getOffscreenBounds(window: BrowserWindow): Rectangle {
-  const displays = screen.getAllDisplays()
-  const maxRight = Math.max(...displays.map((display) => display.bounds.x + display.bounds.width))
-  const topMost = Math.min(...displays.map((display) => display.bounds.y))
-  const [width, height] = window.getSize()
-
-  return {
-    x: maxRight + 2000,
-    y: topMost,
-    width,
-    height
-  }
-}
-
-function softHideWindow(window: BrowserWindow) {
-  if (isWindowSoftHidden || window.isDestroyed()) return
-
-  stopFrontReassert()
-  stopBackgroundGuard()
-  softHiddenBounds = window.getBounds()
-  isWindowSoftHidden = true
-
-  window.setOpacity(0)
-  window.setIgnoreMouseEvents(true)
-  window.setBounds(getOffscreenBounds(window))
-}
-
-function restoreSoftHiddenWindow(window: BrowserWindow) {
-  if (!isWindowSoftHidden || !softHiddenBounds || window.isDestroyed()) return
-
-  applyContentProtection(window, true)
-  window.setBounds(softHiddenBounds)
-  window.setIgnoreMouseEvents(state.ignoreMouse, { forward: true })
-  window.setOpacity(1)
-
-  isWindowSoftHidden = false
-  softHiddenBounds = null
-  keepWindowInFront(window)
-}
-
-function showMainWindow(window: BrowserWindow) {
-  if (process.platform === 'darwin' || process.platform === 'win32') {
-    window.showInactive()
-  } else {
-    window.show()
-  }
-
-  applyContentProtection(window, process.platform === 'win32')
-  keepWindowInFront(window)
-}
-
-function keepWindowInFront(window: BrowserWindow) {
-  if (!window || window.isDestroyed()) return
-  if (frontReassertTimer) {
-    clearInterval(frontReassertTimer)
-    frontReassertTimer = null
-  }
-
-  const start = Date.now()
-  const reassert = () => {
-    // isDestroyed FIRST: isVisible on a destroyed window throws, and this
-    // timer keeps firing every 200ms for a short burst after each show.
-    if (window.isDestroyed() || !window.isVisible()) return false
-    applyTopMost(window)
-    return true
-  }
-
-  if (!reassert()) return
-
-  // Aggressive burst: rapid reasserts for a short period
-  frontReassertTimer = setInterval(() => {
-    const shouldStop = Date.now() - start > FRONT_REASSERT_DURATION
-    if (shouldStop || !reassert()) {
-      if (frontReassertTimer) {
-        clearInterval(frontReassertTimer)
-        frontReassertTimer = null
-      }
-    }
-  }, FRONT_REASSERT_INTERVAL)
-
-  // Ensure background guard is running for persistent protection (stealth
-  // mode only — a normal window needs no guard)
-  if (settings.privacyMode) startBackgroundGuard(window)
 }
 
 /** Nudge the window by a delta, clamped by the window manager. */
@@ -187,33 +37,9 @@ function moveWindowBy(dx: number, dy: number): void {
 }
 
 const callbacks: Record<string, () => void> = {
-  hideOrShowMainWindow: async () => {
-    const mainWindow = global.mainWindow
-    if (!mainWindow || mainWindow.isDestroyed()) return
-
-    if (process.platform === 'win32') {
-      if (isWindowSoftHidden) {
-        restoreSoftHiddenWindow(mainWindow)
-        return
-      }
-
-      if (!mainWindow.isVisible()) {
-        showMainWindow(mainWindow)
-        return
-      }
-
-      softHideWindow(mainWindow)
-      return
-    }
-
-    if (mainWindow.isVisible()) {
-      stopBackgroundGuard()
-      mainWindow.hide()
-    } else {
-      // 重新显示时不断重申置顶属性，抵消其他前台软件持续抢占
-      showMainWindow(mainWindow)
-    }
-  },
+  // Show/hide posture (incl. the Windows soft-hide park) lives in
+  // main-window.ts; this entry is just the shortcut/hover-toolbar hook.
+  hideOrShowMainWindow,
 
   // Screenshot + AI streaming live in src/main/streaming.ts
   takeScreenshot: async () => {
